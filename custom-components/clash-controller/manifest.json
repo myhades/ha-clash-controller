@@ -1,0 +1,10 @@
+{
+    "domain": "ha_clash_controller",
+    "name": "Clash Controller",
+    "version": "0.0.1",
+    "documentation": "https://github.com/myhades/ha-clash-controller",
+    "requirements": [],
+    "dependencies": [],
+    "codeowners": ["@myhades"],
+    "iot_class": "local_polling"
+}
