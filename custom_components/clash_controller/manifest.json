@@ -2,6 +2,7 @@
     "domain": "clash_controller",
     "name": "Clash Controller",
     "version": "0.0.1",
+    "integration_type": "device",
     "documentation": "https://github.com/myhades/ha-clash-controller",
     "issue_tracker": "https://github.com/myhades/ha-clash-controller/issues",
     "requirements": ["aiohttp>=3.8.1"],

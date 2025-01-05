@@ -5,6 +5,7 @@ import voluptuous as vol
 import aiohttp
 import asyncio
 import logging
+import re
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,17 +35,26 @@ class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     api_url = api_url.replace("https://", "http://", 1)
             else:
                 api_url = f"https://{api_url}" if use_ssl else f"http://{api_url}"
-
-
-            # Ensure the URL ends with a trailing slash
             if not api_url.endswith('/'):
                 api_url += '/'
 
+            # Validate unique ID
+            unique_id = re.sub(r"[^a-zA-Z0-9]", "_", api_url.strip().lower().rstrip("_"))
+            await self.async_set_unique_id(unique_id)
+            self._abort_if_unique_id_configured()
+
             try:
                 # Validate connection to the Clash API
-                await self._test_api_connection(api_url, token, allow_unsafe)
+                response_data = await self._test_api_connection(api_url, token, allow_unsafe)
+                clash_core_version = response_data.get("version", "Unknown")
+                _LOGGER.info(f"Connected to Clash API. Version: {clash_core_version}")
+
                 # If no error, store the entry
-                return self.async_create_entry(title=api_url, data=user_input)
+                return self.async_create_entry(title=api_url, data={
+                **user_input,
+                "clash_core_version": clash_core_version,
+                "unique_id": unique_id
+                })
             except aiohttp.ClientError as e:
                 if "Unauthorized" in str(e):
                     errors["base"] = "invalid_token"
@@ -64,13 +74,13 @@ class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional("use_ssl", default=use_ssl): bool,
                 vol.Optional("allow_unsafe", default=allow_unsafe): bool,
             }),
-            description_placeholders={"info": "setup_tips"},
             errors=errors
         )
 
     async def _test_api_connection(self, api_url, token, allow_unsafe):
         """Test the connection to the Clash API."""
         ssl_context = None
+        data = {}
         if allow_unsafe:
             import ssl
             ssl_context = ssl.create_default_context()
@@ -87,6 +97,7 @@ class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data = await response.json()
                 if "version" not in data:
                     raise aiohttp.ClientError("Missing 'version' in response")
+                return data
 
     @staticmethod
     @callback
@@ -112,3 +123,4 @@ class ClashControllerOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional("polling_interval", default=30): int,
             }),
         )
+
