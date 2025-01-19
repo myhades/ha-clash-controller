@@ -18,7 +18,18 @@
             "unknown": "An unexpected error occurred. Please try again later."
         },
         "abort": {
-            "already_configured": "The instance at this location is already added. Use configure to update token or create another entry to update instance location."
+            "already_configured": "The instance at this location is already configured. Use options to update token and modify settings."
           }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "description": "Modify options of this entry.",
+                "title": "Clash Controller Options",
+                "data": {
+                    "scan_interval": "Scan Interval (seconds)"
+                }
+        }
+      }
     }
 }

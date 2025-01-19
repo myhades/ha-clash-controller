@@ -1,19 +1,35 @@
 """Config flow for Clash Controller."""
-from homeassistant import config_entries
-from homeassistant.core import callback
-import voluptuous as vol
-import aiohttp
-import asyncio
+
+from __future__ import annotations
+
 import logging
+import asyncio
 import re
-from .const import DOMAIN
+from typing import Any
+
+import aiohttp
+import voluptuous as vol
+
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.const import CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
+
+from .api import ClashAPI # TODO: Hasn't been implemented yet
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, MIN_SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
-class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+
+class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Clash Controller."""
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step."""
         errors = {}
 
@@ -27,7 +43,7 @@ class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input:
 
-            # Normalize the API URL
+            # Normalize the API URL to connect and generate unique ID
             if api_url.startswith("http://") or api_url.startswith("https://"):
                 if use_ssl and api_url.startswith("http://"):
                     api_url = api_url.replace("http://", "https://", 1)
@@ -37,9 +53,9 @@ class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 api_url = f"https://{api_url}" if use_ssl else f"http://{api_url}"
             if not api_url.endswith('/'):
                 api_url += '/'
-
-            # Validate unique ID
             unique_id = re.sub(r"[^a-zA-Z0-9]", "_", api_url.strip().lower().rstrip("_"))
+            
+            # Validate unique ID
             await self.async_set_unique_id(unique_id)
             self._abort_if_unique_id_configured()
 
@@ -52,8 +68,7 @@ class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # If no error, store the entry
                 return self.async_create_entry(title=api_url, data={
                 **user_input,
-                "clash_core_version": clash_core_version,
-                "unique_id": unique_id
+                "clash_core_version": clash_core_version
                 })
             except aiohttp.ClientError as e:
                 if "Unauthorized" in str(e):
@@ -66,16 +81,14 @@ class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.error(f"Unknown error occurred when trying to connect to clash's RESTful API: {e}")
 
         # Configure the form
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema({
+        return self.async_show_form(step_id="user", data_schema=vol.Schema(
+            {
                 vol.Required("api_url", default=api_url): str,
                 vol.Required("bearer_token", default=token): str,
                 vol.Optional("use_ssl", default=use_ssl): bool,
                 vol.Optional("allow_unsafe", default=allow_unsafe): bool,
-            }),
-            errors=errors
-        )
+            }
+        ), errors=errors)
 
     async def _test_api_connection(self, api_url, token, allow_unsafe):
         """Test the connection to the Clash API."""
@@ -105,22 +118,27 @@ class ClashControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Return the options flow handler."""
         return ClashControllerOptionsFlow(config_entry)
 
-
-class ClashControllerOptionsFlow(config_entries.OptionsFlow):
+class ClashControllerOptionsFlow(OptionsFlow):
     """Handle options for Clash Controller."""
 
-    def __init__(self, config_entry):
+    def __init__(self, config_entry: ConfigEntry) -> None:
+        """Initialize options flow."""
         self.config_entry = config_entry
+        self.options = dict(config_entry.options)
 
     async def async_step_init(self, user_input=None):
-        """Manage the options."""
+        """Handle options flow."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            options = self.config_entry.options | user_input
+            return self.async_create_entry(title="", data=options)
 
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema({
-                vol.Optional("polling_interval", default=30): int,
-            }),
+        data_schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                ): (vol.All(vol.Coerce(int), vol.Clamp(min=MIN_SCAN_INTERVAL))),
+            }
         )
 
+        return self.async_show_form(step_id="init", data_schema=data_schema)
