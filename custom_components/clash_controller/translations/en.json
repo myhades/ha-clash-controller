@@ -15,7 +15,8 @@
         "error": {
             "cannot_connect": "Failed to connect to the API. Verify the address and try again.",
             "invalid_token": "The provided API token is invalid. Please check and try again.",
-            "unknown": "An unexpected error occurred. Please try again later."
+            "unknown": "An unexpected error occurred. Please try again later.",
+            "timed_out": "API connection timed out. Is Clash running?"
         },
         "abort": {
             "already_configured": "The instance at this location is already configured. Use options to update token and modify settings."

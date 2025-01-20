@@ -5,13 +5,7 @@ from datetime import timedelta
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    # api_url,
-    # bearer_token,
-    # use_ssl,
-    # allow_unsafe,
-    CONF_SCAN_INTERVAL,
-)
+from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import DOMAIN, HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -26,7 +20,7 @@ class ClashAPIData:
     """Class to hold api data."""
 
     controller_name: str
-    devices: list[Device]
+    device: Device
 
 class ClashControllerCoordinator(DataUpdateCoordinator):
     """A coordinator to fetch data from the Clash API."""
@@ -56,9 +50,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         )
 
         # Initialise API
-        self.api = ClashAPI(
-            host=self.host, token=self.token, use_ssl=self.use_ssl, allow_unsafe=self.allow_unsafe
-        )
+        self.api = ClashAPI(host=self.host, token=self.token, allow_unsafe=self.allow_unsafe)
 
     async def async_update_data(self):
         """
@@ -67,24 +59,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         try:
             if not self.api.connected:
                 await self.hass.async_add_executor_job(self.api.connect)
-            devices = await self.hass.async_add_executor_job(self.api.get_devices)
-        # TODO: Implement error detections
-        # except APIAuthError as err:
-        #     _LOGGER.error(err)
-        #     raise UpdateFailed(err) from err
+            device = await self.hass.async_add_executor_job(self.api.get_device)
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
         # What is returned here is stored in self.data by the DataUpdateCoordinator
-        return ClashAPIData(self.api.controller_name, devices)
-
-    def get_device_by_id(self, device_id: int) -> Device | None:
-        """Return device by device id."""
-        try:
-            return [
-                device
-                for device in self.data.devices
-                if device.device_id == device_id
-            ][0]
-        except IndexError:
-            return None
+        return ClashAPIData(self.api.controller_name, device)

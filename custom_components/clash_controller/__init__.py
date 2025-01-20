@@ -54,19 +54,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_update_listener(hass: HomeAssistant, config_entry):
     """Handle config options update."""
-    # Reload the integration when the options change.
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 async def async_remove_config_entry_device(
     hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
-    """Delete device if selected from UI."""
+    """Handle entry removal."""
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # TODO: For any added custom services, they need to be removed here too.
+    # TODO: Services added in the future need to be unloaded here too.
     hass.data[DOMAIN][config_entry.entry_id].cancel_update_listener()
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS
