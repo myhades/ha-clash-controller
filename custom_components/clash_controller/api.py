@@ -15,7 +15,6 @@ class Device:
 
     device_unique_id: str
     name: str
-    state: int | bool
 
 class ClashAPI:
     """A utility class to interact with the Clash API."""
@@ -89,3 +88,13 @@ class ClashAPI:
         if response.get("status") == 200:
             return True
         return False
+    
+    def get_devices(self) -> list[Device]:
+        """Get devices on api."""
+        return Device(
+            device_unique_id=self._get_device_unique_id(),
+            name="Clash@" + self.host,
+        )
+    
+    def _get_device_unique_id(self) -> str:
+        return re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_")) + "_device"

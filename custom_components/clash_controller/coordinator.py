@@ -37,10 +37,10 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         """
         Initialize the Clash Controller coordinator.
         """
-        self.host = config_entry.data[api_url]
-        self.token = config_entry.data[bearer_token]
-        self.use_ssl = config_entry.data[use_ssl]
-        self.allow_unsafe = config_entry.data[allow_unsafe]
+        self.host = config_entry.data["api_url"]
+        self.token = config_entry.data["bearer_token"]
+        self.use_ssl = config_entry.data["use_ssl"]
+        self.allow_unsafe = config_entry.data["allow_unsafe"]
 
         self.poll_interval = config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
