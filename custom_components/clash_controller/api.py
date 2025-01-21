@@ -11,12 +11,20 @@ import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
+class DeviceType(StrEnum):
+    """Device types."""
+
+    GROUP_SENSOR = "proxy_group_sensor"
+    GROUP_SELECTOR = "proxy_group_selector"
+    OTHER = "other"
+
 @dataclass
 class Device:
     """Clash API device."""
 
     device_unique_id: str
     name: str
+    device_type: DeviceType
 
 class ClashAPI:
     """A utility class to interact with the Clash API."""
@@ -93,12 +101,6 @@ class ClashAPI:
     async def connected(self, suppress_errors: bool = True) -> bool:
         """
         Check if the API connection is successful by sending a simple request.
-
-        Args:
-            suppress_errors (bool): If True, capture and handle errors silently.
-                                    If False, propagate errors to the caller.
-        Returns:
-            bool: True if the connection is successful, False otherwise.
         """
         endpoint = "version"
         try:

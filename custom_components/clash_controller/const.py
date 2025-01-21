@@ -1,4 +1,4 @@
-"""Constants for the Clash Controller integration."""
+"""Constants for the Clash Controller."""
 
 DOMAIN = "clash_controller"
 DEFAULT_SCAN_INTERVAL = 60
