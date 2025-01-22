@@ -29,14 +29,15 @@ class RuntimeData:
     cancel_update_listener: Callable
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up Clash Controller from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
-    coordinator = ClashControllerCoordinator(hass, entry)
+    coordinator = ClashControllerCoordinator(hass, config_entry)
     await coordinator.async_config_entry_first_refresh()
 
-    if not coordinator.api.connected:
+    if not await coordinator.api.connected():
+        _LOGGER.error("API not connected when setting up the entry.")
         raise ConfigEntryNotReady
 
     cancel_update_listener = config_entry.add_update_listener(_async_update_listener)
@@ -44,10 +45,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator, cancel_update_listener
     )
 
-    for platform in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(config_entry, platform)
-        )
+    # for platform in PLATFORMS:
+    #     hass.async_create_task(
+    #         hass.config_entries.async_forward_entry_setup(config_entry, platform)
+    #     )
 
     return True
 

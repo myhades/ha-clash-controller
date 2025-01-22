@@ -54,6 +54,7 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 api_url = f"https://{api_url}" if use_ssl else f"http://{api_url}"
             if not api_url.endswith('/'):
                 api_url += '/'
+            user_input["api_url"] = api_url
             unique_id = re.sub(r"[^a-zA-Z0-9]", "_", api_url.strip().lower().rstrip("_"))
             
             # Validate unique ID

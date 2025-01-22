@@ -19,8 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 class ClashAPIData:
     """Class to hold api data."""
 
-    controller_name: str
-    device: Device
+    devices: list[Device]
 
 class ClashControllerCoordinator(DataUpdateCoordinator):
     """A coordinator to fetch data from the Clash API."""
@@ -33,7 +32,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         """
         self.host = config_entry.data["api_url"]
         self.token = config_entry.data["bearer_token"]
-        self.use_ssl = config_entry.data["use_ssl"]
         self.allow_unsafe = config_entry.data["allow_unsafe"]
 
         self.poll_interval = config_entry.options.get(
@@ -51,17 +49,21 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
 
         # Initialise API
         self.api = ClashAPI(host=self.host, token=self.token, allow_unsafe=self.allow_unsafe)
+        _LOGGER.debug(f"Clash API initialized for coordinator {self.name}")
 
     async def async_update_data(self):
         """
         Fetch data from API endpoint.
         """
+        
+        _LOGGER.debug(f"Start fetching data from Clash.")
+        devices: dict[str, Device] = {}
+
         try:
-            if not self.api.connected:
-                await self.hass.async_add_executor_job(self.api.connect)
-            device = await self.hass.async_add_executor_job(self.api.get_device)
+            if await self.api.connected(suppress_errors=False):
+                await self.api.fetch_data()
+                # devices = await self.hass.async_add_executor_job(self.api.get_devices)
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
-        # What is returned here is stored in self.data by the DataUpdateCoordinator
-        return ClashAPIData(self.api.controller_name, device)
+        return ClashAPIData(devices)

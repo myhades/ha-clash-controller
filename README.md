@@ -10,14 +10,17 @@ This is not an implementation of Clash, but merely an external controller in the
 This integration should work with most of the Clash cores since they share the same RESTful API. This includes vanilla, premium and meta cores, etc.
 **Make sure external controller option is enabled**.
 
-### Installation
+## Installation
 
-1. Through HACS (not added to default repo, yet)
-2. Manually download the files and add to custom_components folder of your Home Assistant installation.
+(Recommanded) Through HACS (not added to default repo, yet)
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=myhades&repository=ha-clash-controller&category=integration)
+
+Or manually download the files and add to custom_components folder of your Home Assistant installation.
 
 After either, reboot your instance.
 
-### Configuration
+## Configuration
 Add the integration by searching "Clash Controller" and follow the config flow. If you can't find it in the list, make sure you've rebooted then clear the browser cache.
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=clash_controller)
@@ -29,14 +32,26 @@ Note the following:
 2. This integration supports both http and https endpoints. If you're using a self-signed certificate, check the "Allow Unsafe SSL Certificates" box.
 (Not recommanded, since this option suppresses all warnings and could potentially leak your token, use it only for experimental purposes and/or in a secured network)
 
-### Usage
-This integration provide one device per entry. It will generate selectors and sensors by enumerate through all proxy groups with the type of "selector", and with the type of "___"
-
+## Usage
+This integration provide one device per entry. It will generate selectors and sensors by enumerate through all proxy groups.
 Services are provided to get the latency of a proxy group/node, flush the cache and reboot the core.
 
+1. Entities
+- [ ] Proxy group sensor (all, current latency attributes)
+- [ ] Proxy gorup selector (all, current latency attributes)
+- [ ] Traffic sensor (up/down)
+- [ ] Total traffic sensor (up/down)
+- [ ] Connection number
+- [ ] Memory info
+- [ ] Core version sensor (attributes with config info)
 
+2. Services
+- [ ] Node/Group latency
+- [ ] Flush Cache
+- [ ] Reboot core
+- [ ] Delete connection (with different filters)
 
-### Disclaimer
+## Disclaimer
 
 This integration is solely for controlling Clash and is not responsible for any actions taken by users while using Clash. The user is fully responsible for ensuring that their use of Clash complies with all applicable laws and regulations. I make no warranties regarding the accuracy, legality, or appropriateness of Clash or its usage.
 
