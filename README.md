@@ -1,13 +1,16 @@
 # Home Assistant Clash Controller
+![Repo Logo](https://raw.githubusercontent.com/myhades/ha-clash-controller/refs/heads/main/assets/clash_controller_repo_logo.png)
+
 A Home Assistant integration for controlling an external Clash instance through RESTful API.
+
 This is not an implementation of Clash, but merely an external controller in the form of a Home Asssistant integration to assist automated network control. 
-(Streaming service availability detection and automatic proxy node change feature planned)
 
-*This integration is currently under development and implemented no functionality.*
+*<span style="color: red;">This integration is currently under development and implemented no functionality.</span>*
 
-### Supported Version
+## Supported Version
 
 This integration should work with most of the Clash cores since they share the same RESTful API. This includes vanilla, premium and meta cores, etc.
+
 **Make sure external controller option is enabled**.
 
 ## Installation
@@ -50,6 +53,9 @@ Services are provided to get the latency of a proxy group/node, flush the cache 
 - [ ] Flush Cache
 - [ ] Reboot core
 - [ ] Delete connection (with different filters)
+
+
+(Streaming service availability detection and automatic proxy node change feature planned)
 
 ## Disclaimer
 
