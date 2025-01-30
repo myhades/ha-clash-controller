@@ -72,6 +72,8 @@ class ClashAPI:
         try:
             async with self._session.request(method, url, params=params, json=json_data, headers=headers) as response:
                 response.raise_for_status()
+                if response.status == 204:
+                    return None
                 try:
                     if read_line > 0:
                         line_counter = 0
@@ -151,6 +153,17 @@ class ClashAPI:
         _LOGGER.debug(f"Data fetched: {list(payload.keys())}")
 
         return payload
+    
+    async def set_proxy_group(self, group: str, node: str):
+        """
+        Set the proxy group.
+        """
+        endpoint = "group"
+        try:
+            await self._request("PUT", f"proxies/{group}", json_data={"name": node})
+        except Exception as err:
+            _LOGGER.error(f"Error setting proxy group: {err}")
+            raise APIClientError("Error setting proxy group.") from err
     
 class APIAuthError(Exception):
     """Exception class for auth error."""

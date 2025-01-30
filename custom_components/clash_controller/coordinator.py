@@ -113,6 +113,26 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
                 "icon": "mdi:transit-connection",
             },
         ]
+        group_selector_items = ["tfo", "type", "udp", "xudp", "alive", "history"]
+        group_sensor_items = group_selector_items + ["all", "testUrl"]
+        for item in response.get("group").get("proxies"):
+            if item.get("type") in ["Selector", "Fallback"]:
+                entity_data.append({
+                    "name": item.get("name"),
+                    "state": item.get("now"),
+                    "entity_type": "proxy_group_selector",
+                    "icon": "mdi:network-outline",
+                    "options": item.get("all"),
+                    "attributes": {k: item[k] for k in group_selector_items if k in item},
+                })
+            elif item.get("type") == "URLTest":
+                entity_data.append({
+                    "name": item.get("name"),
+                    "state": item.get("now"),
+                    "entity_type": "proxy_group_sensor",
+                    "icon": "mdi:network-outline",
+                    "attributes": {k: item[k] for k in group_sensor_items if k in item},
+                })
         for item in entity_data:
             item["unique_id"] = f"{self.api.device_id}_{item['name'].lower().replace(' ', '_')}"
 

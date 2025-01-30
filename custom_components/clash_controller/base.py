@@ -34,4 +34,9 @@ class BaseEntity(CoordinatorEntity):
     def _handle_coordinator_update(self) -> None:
         self.entityData = self.coordinator.get_data_by_name(self.entityData.get("name"))
         self.async_write_ha_state()
+    
+    @property
+    def extra_state_attributes(self):
+        """Default extra state attributes for base sensor."""
+        return self.entityData.get("attributes", None)
 

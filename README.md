@@ -7,8 +7,8 @@ This is not an implementation of Clash, but an external controller in the form o
 
 This integration is my very first Python / Home Assistant project, and I’m still learning. Please expect some instability and rough edges. Feedback and contributions are greatly appreciated!
 
-> [IMPORTANT]
-> This integration is currently under development and implemented limited functionality. A lot might change thus it's not recommanded for daily use yet.
+> [!IMPORTANT]
+> This integration is currently under development and implemented limited functionality.
 
 ## Supported Version
 
@@ -27,11 +27,12 @@ Or manually download the files and add to custom_components folder of your Home 
 After either, reboot your instance.
 
 ## Configuration
-Add the integration by searching "Clash Controller" and follow the config flow. If you can't find it in the list, make sure you've rebooted then clear the browser cache.
+
+Add the integration by searching "Clash Controller" and follow the config flow. If you can't find it in the list, make sure you've successfully installed the integration and rebooted. Then, clear the browser cache.
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=clash_controller)
 
-You'll need to provide the endpoint location and the bearer token. Having the token enabled is required to use this integration.
+You'll need to provide the endpoint location and the bearer token. Having a token set is required to use this integration.
 
 Note the following:
 1. If your endpoint is an IP address, make sure it's static or assign a static DHCP lease for it. Endpoint location changes will require you to re-add the integration.
@@ -39,12 +40,13 @@ Note the following:
 (Not recommanded, since this option suppresses all warnings and could potentially leak your token, use it only for experimental purposes and/or in a secured network)
 
 ## Usage
+
 This integration provide one device per entry. It will generate selectors and sensors by enumerate through all proxy groups.
 Services are provided to get the latency of a proxy group/node, flush the cache and reboot the core.
 
 1. Entities
-- [ ] Proxy group sensor (all, current latency attributes)
-- [ ] Proxy gorup selector (all, current latency attributes)
+- [x] Proxy group sensor (all, current latency attributes)
+- [x] Proxy gorup selector (all, current latency attributes)
 - [x] Traffic sensor (up/down)
 - [x] Total traffic sensor (up/down)
 - [x] Connection number
@@ -52,11 +54,12 @@ Services are provided to get the latency of a proxy group/node, flush the cache 
 
 2. Services
 - [ ] Node/Group latency
-- [ ] Flush Cache
+- [ ] Flush cache
 - [ ] Reboot core
-- [ ] Delete connection (with different filters)
+- [ ] Delete connection (with filters)
+- [ ] Get rules (with filters)
 
-3. Functions
+3. Additional Functions
 - [ ] Streaming service availability detection
 - [ ] Automatic proxy node selection for streaming
 

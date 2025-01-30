@@ -9,9 +9,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .base import BaseEntity
 from .const import DOMAIN
@@ -28,22 +26,18 @@ async def async_setup_entry(
 
     coordinator: ClashControllerCoordinator = hass.data[DOMAIN][config_entry.entry_id].coordinator
 
+    sensor_types = {
+        "traffic_sensor": TrafficSensor,
+        "memory_sensor": MemorySensor,
+        "total_traffic_sensor": TotalTrafficSensor,
+        "connection_sensor": ConnectionSensor,
+        "proxy_group_sensor": GroupSensor,
+    }
+
     sensors = [
-        TrafficSensor(coordinator, entityData)
+        sensor_types[entity_type](coordinator, entityData)
         for entityData in coordinator.data
-        if entityData.get("entity_type") == "traffic_sensor"
-    ]+[
-        MemorySensor(coordinator, entityData)
-        for entityData in coordinator.data
-        if entityData.get("entity_type") == "memory_sensor"
-    ]+[
-        TotalTrafficSensor(coordinator, entityData)
-        for entityData in coordinator.data
-        if entityData.get("entity_type") == "total_traffic_sensor"
-    ]+[
-        ConnectionSensor(coordinator, entityData)
-        for entityData in coordinator.data
-        if entityData.get("entity_type") == "connection_sensor"
+        if (entity_type := entityData.get("entity_type")) in sensor_types
     ]
 
     async_add_entities(sensors)
@@ -59,11 +53,6 @@ class SensorEntityBase(BaseEntity, SensorEntity):
         """Default state of the base sensor."""
         value = self.entityData.get("state", None)
         return int(value) if value is not None else None
-
-    @property
-    def extra_state_attributes(self):
-        """Default extra state attributes for base sensor."""
-        return self.entityData.get("attributes", None)
 
 class TrafficSensor(SensorEntityBase):
     """Implementation of a traffic sensor."""
@@ -104,3 +93,14 @@ class MemorySensor(SensorEntityBase):
         self._attr_native_unit_of_measurement = "B"
         self._attr_suggested_unit_of_measurement = "MB"
         self._attr_suggested_display_precision = 0
+
+class GroupSensor(SensorEntityBase):
+    """Implementation of a memory sensor."""
+
+    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
+        super().__init__(coordinator, entityData)
+    
+    @property
+    def native_value(self) -> int | None:
+        """Default state of the base sensor."""
+        return self.entityData.get("state", None)
