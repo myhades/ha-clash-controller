@@ -18,7 +18,7 @@ from .coordinator import ClashControllerCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
 @dataclass
@@ -45,10 +45,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         coordinator, cancel_update_listener
     )
 
-    # for platform in PLATFORMS:
-    #     hass.async_create_task(
-    #         hass.config_entries.async_forward_entry_setup(config_entry, platform)
-    #     )
+    for platform in PLATFORMS:
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(config_entry, platform)
+        )
 
     return True
 

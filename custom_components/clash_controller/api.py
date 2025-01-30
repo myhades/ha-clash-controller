@@ -13,23 +13,6 @@ import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
-class DeviceType(StrEnum):
-    """Device types."""
-
-    TRAFFIC_SENSOR = "traffic_sensor"
-    GROUP_SENSOR = "proxy_group_sensor"
-    CONN_NUM_SENSOR = "connection_number_sensor"
-    GROUP_SELECTOR = "proxy_group_selector"
-    OTHER = "other"
-
-@dataclass
-class Device:
-    """Clash API device."""
-
-    device_unique_id: str
-    name: str
-    device_type: DeviceType
-
 class ClashAPI:
     """A utility class to interact with the Clash API."""
 
@@ -40,6 +23,7 @@ class ClashAPI:
         self.host = host
         self.token = token
         self.allow_unsafe = allow_unsafe
+        self.device_id = re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_")) + "_device"
         self._session: Optional[aiohttp.ClientSession] = None
     
     async def _create_session(self):
@@ -67,9 +51,8 @@ class ClashAPI:
                 await new_session.close()
             raise APIClientError("Error creating HTTP session.") from err
 
-
     async def _request(
-        self, method: str, endpoint: str, params: dict = None, json_data: dict = None, read_one_line: bool = False
+        self, method: str, endpoint: str, params: dict = None, json_data: dict = None, read_line: int = 0
         ):
         """
         General method for making requests.
@@ -84,18 +67,18 @@ class ClashAPI:
             "Content-Type": "application/json",
         }
 
-        _LOGGER.debug(f"Making {method} request to {url}, read one line: {read_one_line}.")
+        _LOGGER.debug(f"Making {method} request to {url}, read line: {read_line}.")
 
         try:
             async with self._session.request(method, url, params=params, json=json_data, headers=headers) as response:
                 response.raise_for_status()
                 try:
-                    if read_one_line:
+                    if read_line > 0:
+                        line_counter = 0
                         async for line in response.content:
-                            line = line.decode('utf-8').strip()
-                            if line:
-                                return json.loads(line)
-                            break
+                            line_counter += 1
+                            if line_counter == read_line:
+                                return json.loads(line.decode('utf-8').strip())
                     else:
                         return await response.json()
                 except (json.JSONDecodeError, UnicodeDecodeError) as err:
@@ -118,20 +101,6 @@ class ClashAPI:
             _LOGGER.error(f"API request generic failure: {err}", exc_info=True)
             raise APIClientError("API client error.") from err
 
-    async def fetch_data(self) -> dict:
-        """
-        Get all data needed to update the entities.
-        """
-        payload = {}
-        payload['traffic'] = await self._request("GET", "traffic", read_one_line=True)
-        payload['memory'] = await self._request("GET", "memory", read_one_line=True)
-        payload['version'] = await self._request("GET", "version")
-        # payload['group'] = await self._request("GET", "group")
-        # payload['connections'] = await self._request("GET", "connections")
-        _LOGGER.debug(f"Data fetched: {payload}")
-        return payload
-
-    
     async def connected(self, suppress_errors: bool = True) -> bool:
         """
         Check if the API connection is successful by sending a simple request.
@@ -147,17 +116,20 @@ class ClashAPI:
             if suppress_errors:
                 return False
             raise
-    
-    def get_device(self) -> Device:
+
+    async def get_version(self) -> str:
         """
-        Generate a device object.
+        Get the version string.
         """
-        # TODO: Differentiate between devices and entities
-        return Device(
-            device_unique_id=re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_")) + "_device",
-            name="Clash@" + self.host,
-        )
-    
+        try:
+            version_info = await self._request("GET", "version")
+        except Exception:
+            return None
+        return {
+            "meta": "Meta Core" if version_info.get("meta") is True else "Non-Meta Core",
+            "version": version_info.get("version", "unknown"),
+        }
+
     async def disconnect(self):
         """
         Manually close the session.
@@ -166,6 +138,20 @@ class ClashAPI:
             await self._session.close()
         self._session = None
 
+    async def fetch_data(self) -> dict:
+        """
+        Get all data needed to update the entities.
+        """
+        payload: dict[str, Any] = {}
+        
+        payload['memory'] = await self._request("GET", "memory", read_line=2)
+        payload['traffic'] = await self._request("GET", "traffic", read_line=1)
+        payload['connections'] = await self._request("GET", "connections")
+        payload['group'] = await self._request("GET", "group")
+        _LOGGER.debug(f"Data fetched: {list(payload.keys())}")
+
+        return payload
+    
 class APIAuthError(Exception):
     """Exception class for auth error."""
 

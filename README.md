@@ -3,9 +3,12 @@
 
 A Home Assistant integration for controlling an external Clash instance through RESTful API.
 
-This is not an implementation of Clash, but merely an external controller in the form of a Home Asssistant integration to assist automated network control. 
+This is not an implementation of Clash, but an external controller in the form of a Home Asssistant integration to assist automated network control with ease. 
 
-*<span style="color: red;">This integration is currently under development and implemented no functionality.</span>*
+This integration is my very first Python / Home Assistant project, and I’m still learning. Please expect some instability and rough edges. Feedback and contributions are greatly appreciated!
+
+> [IMPORTANT]
+> This integration is currently under development and implemented limited functionality. A lot might change thus it's not recommanded for daily use yet.
 
 ## Supported Version
 
@@ -15,7 +18,7 @@ This integration should work with most of the Clash cores since they share the s
 
 ## Installation
 
-(Recommanded) Through HACS (not added to default repo, yet)
+Through HACS (not added to default repo, yet)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=myhades&repository=ha-clash-controller&category=integration)
 
@@ -42,11 +45,10 @@ Services are provided to get the latency of a proxy group/node, flush the cache 
 1. Entities
 - [ ] Proxy group sensor (all, current latency attributes)
 - [ ] Proxy gorup selector (all, current latency attributes)
-- [ ] Traffic sensor (up/down)
-- [ ] Total traffic sensor (up/down)
-- [ ] Connection number
-- [ ] Memory info
-- [ ] Core version sensor (attributes with config info)
+- [x] Traffic sensor (up/down)
+- [x] Total traffic sensor (up/down)
+- [x] Connection number
+- [x] Memory info
 
 2. Services
 - [ ] Node/Group latency
@@ -54,8 +56,9 @@ Services are provided to get the latency of a proxy group/node, flush the cache 
 - [ ] Reboot core
 - [ ] Delete connection (with different filters)
 
-
-(Streaming service availability detection and automatic proxy node change feature planned)
+3. Functions
+- [ ] Streaming service availability detection
+- [ ] Automatic proxy node selection for streaming
 
 ## Disclaimer
 
