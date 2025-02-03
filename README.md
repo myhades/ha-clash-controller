@@ -1,5 +1,7 @@
 # Home Assistant Clash Controller
-![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/myhades/be4c3c828d6843f920ed3720b9d1786a/raw/badges.json)
+[![](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![](https://img.shields.io/badge/maintainer-%40myhades-green)](https://github.com/myhades)
+[![](https://img.shields.io/github/v/release/myhades/ha-clash-controller)](https://github.com/myhades/ha-clash-controller/releases)
 
 ![Repo Logo](https://raw.githubusercontent.com/myhades/ha-clash-controller/refs/heads/main/assets/clash_controller_repo_logo.png)
 
@@ -9,14 +11,12 @@ This is not an implementation of Clash, but an external controller in the form o
 
 This integration is my very first Python / Home Assistant project, and I’m still learning. Please expect some instability and rough edges. Feedback and contributions are greatly appreciated!
 
-> [!IMPORTANT]
-> This integration is currently under development and implemented limited functionality.
-
 ## Supported Version
 
 This integration should work with most of the Clash cores since they share the same RESTful API. This includes vanilla, premium and meta cores, etc.
 
-**Make sure external controller option is enabled**.
+> [!IMPORTANT]
+> Make sure external controller option is enabled.
 
 ## Installation
 
