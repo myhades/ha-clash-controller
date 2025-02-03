@@ -96,8 +96,9 @@ get_latency_service:
       selector:
         number:
           min: 100
+          max: 10000
           step: 100
-          mode: 10000
+          mode: "box"
 
 dns_query_service:
   name: DNS Query
