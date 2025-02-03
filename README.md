@@ -1,4 +1,6 @@
 # Home Assistant Clash Controller
+![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/myhades/be4c3c828d6843f920ed3720b9d1786a/raw/badges.json)
+
 ![Repo Logo](https://raw.githubusercontent.com/myhades/ha-clash-controller/refs/heads/main/assets/clash_controller_repo_logo.png)
 
 A Home Assistant integration for controlling an external Clash instance through RESTful API.
