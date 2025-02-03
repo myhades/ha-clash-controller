@@ -1,0 +1,9 @@
+- name: ha-clash-controller Badges
+  uses: schneegans/dynamic-badges-action@v1.7.0
+  with:
+    auth: ${{ secrets.GIST_SECRET }}
+    gistID: <gist-ID>
+    filename: badges.json
+    label: Hello
+    message: World
+    color: orange
