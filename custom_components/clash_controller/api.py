@@ -3,9 +3,9 @@
 from typing import Any, Optional
 import asyncio
 import json
+import logging
 import re
 import ssl
-import logging
 
 import aiohttp
 
@@ -24,9 +24,9 @@ class ClashAPI:
         self.device_id = re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_")) + "_device"
         self._session: Optional[aiohttp.ClientSession] = None
     
-    async def _create_session(self):
+    async def _establish_session(self):
         """
-        Create/Recreate a session with given configuration.
+        Establish a session with given configuration.
         """
 
         ssl_context = None
@@ -44,21 +44,24 @@ class ClashAPI:
             _LOGGER.debug("Session created successfully.")
             self._session = new_session
         except Exception as err:
-            _LOGGER.error(f"Failed to create HTTP session: {err}")
             if new_session:
                 await new_session.close()
-            raise APIClientError("Error creating HTTP session.") from err
+            raise APIClientError(f"Error creating HTTP session: {err}") from err
 
     async def _request(
-        self, method: str, endpoint: str, params: dict = None, json_data: dict = None, read_line: int = 0
+        self,
+        method: str,
+        endpoint: str,
+        params: dict = None,
+        json_data: dict = None,
+        read_line: int = 0
         ):
         """
         General method for making requests.
         """
-
         if self._session is None:
-            await self._create_session()  # Lazy initialization
-
+            await self._establish_session()
+            
         url = f"{self.host}{endpoint}"
         headers = {
             "Authorization": f"Bearer {self.token}",
@@ -82,24 +85,37 @@ class ClashAPI:
                     else:
                         return await response.json()
                 except (json.JSONDecodeError, UnicodeDecodeError) as err:
-                    _LOGGER.error(f"Error decoding JSON: {err}")
-                    raise APIClientError("Failed to parse JSON response.") from err
+                    raise APIClientError(f"Error parsing JSON: {err}") from err
                 except Exception as err:
-                    _LOGGER.error(f"Unexpected error parsing line: {err}")
-                    raise APIClientError("Error processing API response.") from err
+                    raise APIClientError(f"Unexpected error parsing API response: {err}") from err
         except aiohttp.ClientResponseError as err:
             if err.status == 401:
-                _LOGGER.error("Authentication failed for API request.")
                 raise APIAuthError("Invalid API credentials.")
             else:
-                _LOGGER.error(f"API request got an invalid response: {err}")
-                raise APIClientError("API invalid response.") from err
+                raise APIClientError(f"API request got an invalid response: {err}") from err
         except asyncio.TimeoutError as err:
-            _LOGGER.error(f"API request timeout: {err}")
-            raise APITimeoutError("API connection timeout.") from err
+            raise APITimeoutError(f"API request timed out: {err}") from err
         except Exception as err:
-            _LOGGER.error(f"API request generic failure: {err}", exc_info=True)
-            raise APIClientError("API client error.") from err
+            raise APIClientError(f"API request generic failure: {err}") from err
+
+    async def async_request(
+        self,
+        method: str,
+        endpoint: str,
+        params: dict = None,
+        json_data: dict = None,
+        read_line: int = 0,
+        suppress_errors: bool = True,
+        ) -> Any:
+        """
+        General async request method.
+        """
+        try:
+            return await self._request(method, endpoint, params=params, json_data=json_data, read_line=read_line)
+        except Exception:
+            if suppress_errors:
+                return None
+            raise
 
     async def connected(self, suppress_errors: bool = True) -> bool:
         """
@@ -108,38 +124,41 @@ class ClashAPI:
         try:
             response = await self._request("GET", "version")
             if ("version" not in response) and (not suppress_errors):
-                _LOGGER.error("Missing version key in response. Is this endpoint running Clash?")
-                raise APIClientError("Version key missing.")
-            return "version" in response
+                raise APIClientError("Missing version key in response. Is this endpoint running Clash?")
+            if "version" not in response:
+                return False
         except Exception:
             if suppress_errors:
                 return False
             raise
+        return True
 
-    async def get_version(self) -> str:
+    async def get_version(self) -> dict:
         """
         Get the version string.
         """
-        try:
-            version_info = await self._request("GET", "version")
-        except Exception:
-            return None
+        response = await self.async_request("GET", "version")
         return {
-            "meta": "Meta Core" if version_info.get("meta") is True else "Non-Meta Core",
-            "version": version_info.get("version", "unknown"),
+            "meta": "Meta Core" if response and response.get("meta") is True else "Non-Meta Core",
+            "version": response.get("version", "unknown"),
         }
 
     async def fetch_data(self) -> dict:
         """
         Get all data needed to update the entities.
         """
-        payload: dict[str, Any] = {}
-        
-        payload['memory'] = await self._request("GET", "memory", read_line=2)
-        payload['traffic'] = await self._request("GET", "traffic", read_line=1)
-        payload['connections'] = await self._request("GET", "connections")
-        payload['group'] = await self._request("GET", "group")
-
+        payload_keys = ["memory", "traffic", "connections", "group"]
+        endpoints = [
+            ("memory", {"read_line": 2}),
+            ("traffic", {"read_line": 1}),
+            ("connections", {}),
+            ("group", {})
+        ]
+        results = await asyncio.gather(*[
+            self.async_request("GET", endpoint, **params)
+            for endpoint, params in endpoints
+        ])
+        payload = dict(zip(payload_keys, results))
         _LOGGER.debug(f"Data fetched: {list(payload.keys())}")
         return payload
     
@@ -147,30 +166,9 @@ class ClashAPI:
         """
         Set the proxy group.
         """
-        try:
-            await self._request("PUT", f"proxies/{group}", json_data={"name": node})
-        except Exception as err:
-            _LOGGER.error(f"Error setting proxy group: {err}")
-            raise APIClientError("Error setting proxy group.") from err
-
-    async def async_request(self, method: str, endpoint: str, params: dict = None, json_data: dict = None):
-        """
-        General async request method.
-        """
-        try:
-            response = await self._request(method, endpoint, json_data=json_data)
-        except Exception as err:
-            _LOGGER.error(f"Error performing general request: {err}")
-            raise APIClientError("Error performing request.") from err
-        return response
-
-    # async def disconnect(self):
-    #     """
-    #     Manually close the session.
-    #     """
-    #     if self._session:
-    #         await self._session.close()
-    #     self._session = None
+        response = await self.async_request("PUT", f"proxies/{group}", json_data={"name": node})
+        if response is None:
+            raise APIClientError(f"Failed to set proxy group {group} to {node}.")
 
 class APIAuthError(Exception):
     """Exception class for auth error."""

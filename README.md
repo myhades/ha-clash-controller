@@ -53,11 +53,11 @@ Note the following:
 - [x] Flush FakeIP cache button
 
 2. Services
-- [ ] Node/Group latency
-- [ ] Reboot core
-- [x] Get connection (with filters)
-- [ ] Delete connection (with filters)
-- [ ] Get rules (with filters)
+- [x] Node/Group latency
+- [x] Get/Close connection (with filters)
+- [x] Get rules (with filters)
+- [x] DNS query
+- [x] Reboot core
 
 3. Additional Functions
 - [ ] Streaming service availability detection

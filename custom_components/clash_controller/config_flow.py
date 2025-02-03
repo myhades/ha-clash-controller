@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import logging
-import asyncio
 import re
 from typing import Any
 
-import aiohttp
 import voluptuous as vol
 
 from homeassistant.config_entries import (
@@ -17,8 +15,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.core import callback
 
 from .api import ClashAPI, APITimeoutError, APIAuthError, APIClientError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, MIN_SCAN_INTERVAL
