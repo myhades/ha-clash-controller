@@ -1,0 +1,40 @@
+reboot_core_service:
+  name: Reboot Clash Core
+  description: >
+    Reboot the core of the remote Clash instance. 
+  fields:
+    device_id:
+      name: Instance
+      description: Select the target instance.
+      required: true
+      selector:
+        device:
+          integration: clash_controller
+
+get_connection_service:
+  name: Get Connection
+  description: >
+    Retrieve a list of active connections using keyword filters. Leave a filter empty to disable it. Separate multiple keywords with a comma ",". Keywords are case-insensitive.
+  fields:
+    device_id:
+      name: Instance
+      description: Select the target instance.
+      required: true
+      selector:
+        device:
+          integration: clash_controller
+    host:
+      name: Host
+      description: Filter by host. 
+      example: "netflix.com, youtube"
+      required: false
+    src_hostname:
+      name: Source Hostname
+      description: Filter by source hostname.
+      example: "192.168.1.1"
+      required: false
+    des_hostname:
+      name: Destination Hostname
+      description: Filter by destination hostname.
+      example: "210.61.187.240"
+      required: false

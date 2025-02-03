@@ -41,21 +41,19 @@ Note the following:
 
 ## Usage
 
-This integration provide one device per entry. It will generate selectors and sensors by enumerate through all proxy groups.
-Services are provided to get the latency of a proxy group/node, flush the cache and reboot the core.
-
 1. Entities
 - [x] Proxy group sensor (all, current latency attributes)
 - [x] Proxy gorup selector (all, current latency attributes)
 - [x] Traffic sensor (up/down)
 - [x] Total traffic sensor (up/down)
-- [x] Connection number
-- [x] Memory info
+- [x] Connection number sensor
+- [x] Memory info sensor
+- [x] Flush FakeIP cache button
 
 2. Services
 - [ ] Node/Group latency
-- [ ] Flush cache
 - [ ] Reboot core
+- [x] Get connection (with filters)
 - [ ] Delete connection (with filters)
 - [ ] Get rules (with filters)
 

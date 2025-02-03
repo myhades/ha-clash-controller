@@ -1,7 +1,7 @@
 """Data coordinator for Clash Controller."""
 
 from datetime import timedelta
-from typing import List, Dict, Optional
+from typing import Any, Optional
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -63,7 +63,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         """
         response: dict[str, Any] = {}
         isConnected = False
-        _LOGGER.debug(f"Start fetching data from Clash.")
+        _LOGGER.debug("Start fetching data from Clash.")
 
         try:
             isConnected = await self.api.connected(suppress_errors=False)
@@ -112,6 +112,15 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
                 "entity_type": "connection_sensor",
                 "icon": "mdi:transit-connection",
             },
+            {
+                "name": "Flush FakeIP Cache",
+                "entity_type": "fakeip_flush_button",
+                "icon": "mdi:broom",
+                "action":{
+                    "method": self.api.async_request,
+                    "args": ("POST", "cache/fakeip/flush")
+                }
+            }
         ]
         group_selector_items = ["tfo", "type", "udp", "xudp", "alive", "history"]
         group_sensor_items = group_selector_items + ["all", "testUrl"]

@@ -15,10 +15,15 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator
+from .services import ClashServicesSetup
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SELECT]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.SELECT,
+    Platform.BUTTON,
+]
 
 
 @dataclass
@@ -50,6 +55,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             hass.config_entries.async_forward_entry_setup(config_entry, platform)
         )
 
+    ClashServicesSetup(hass, config_entry)
+
     return True
 
 
@@ -66,7 +73,9 @@ async def async_remove_config_entry_device(
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # TODO: Services added in the future need to be unloaded here too.
+
+    for service in hass.services.async_services_for_domain(DOMAIN):
+        hass.services.async_remove(DOMAIN, service)
     hass.data[DOMAIN][config_entry.entry_id].cancel_update_listener()
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS

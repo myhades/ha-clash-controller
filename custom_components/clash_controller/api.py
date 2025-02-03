@@ -1,8 +1,6 @@
 """API class for Clash Controller."""
 
-from dataclasses import dataclass
-from enum import StrEnum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 import asyncio
 import json
 import re
@@ -107,11 +105,10 @@ class ClashAPI:
         """
         Check if the API connection is successful by sending a simple request.
         """
-        endpoint = "version"
         try:
-            response = await self._request("GET", endpoint)
+            response = await self._request("GET", "version")
             if ("version" not in response) and (not suppress_errors):
-                _LOGGER.error(f"Missing version key in response. Is this endpoint running Clash?")
+                _LOGGER.error("Missing version key in response. Is this endpoint running Clash?")
                 raise APIClientError("Version key missing.")
             return "version" in response
         except Exception:
@@ -132,14 +129,6 @@ class ClashAPI:
             "version": version_info.get("version", "unknown"),
         }
 
-    async def disconnect(self):
-        """
-        Manually close the session.
-        """
-        if self._session:
-            await self._session.close()
-        self._session = None
-
     async def fetch_data(self) -> dict:
         """
         Get all data needed to update the entities.
@@ -150,21 +139,39 @@ class ClashAPI:
         payload['traffic'] = await self._request("GET", "traffic", read_line=1)
         payload['connections'] = await self._request("GET", "connections")
         payload['group'] = await self._request("GET", "group")
-        _LOGGER.debug(f"Data fetched: {list(payload.keys())}")
 
+        _LOGGER.debug(f"Data fetched: {list(payload.keys())}")
         return payload
     
     async def set_proxy_group(self, group: str, node: str):
         """
         Set the proxy group.
         """
-        endpoint = "group"
         try:
             await self._request("PUT", f"proxies/{group}", json_data={"name": node})
         except Exception as err:
             _LOGGER.error(f"Error setting proxy group: {err}")
             raise APIClientError("Error setting proxy group.") from err
-    
+
+    async def async_request(self, method: str, endpoint: str, params: dict = None, json_data: dict = None):
+        """
+        General async request method.
+        """
+        try:
+            response = await self._request(method, endpoint, json_data=json_data)
+        except Exception as err:
+            _LOGGER.error(f"Error performing general request: {err}")
+            raise APIClientError("Error performing request.") from err
+        return response
+
+    # async def disconnect(self):
+    #     """
+    #     Manually close the session.
+    #     """
+    #     if self._session:
+    #         await self._session.close()
+    #     self._session = None
+
 class APIAuthError(Exception):
     """Exception class for auth error."""
 
