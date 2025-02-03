@@ -5,6 +5,7 @@ import logging
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base import BaseEntity
@@ -49,6 +50,11 @@ class GroupSelect(SelectEntityBase):
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        await self.coordinator.api.set_proxy_group(self._attr_name, option)
+        group = self._attr_name.strip()
+        node = option.strip()
+        try:
+            await self.coordinator.api.async_request("PUT", f"proxies/{group}", json_data={"name": node})
+        except Exception as err:
+            raise HomeAssistantError(f"Failed to set proxy group {group} to {node}.") from err
         self._attr_current_option = option
         self.async_write_ha_state()

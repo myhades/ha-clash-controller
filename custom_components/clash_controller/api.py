@@ -161,14 +161,6 @@ class ClashAPI:
         payload = dict(zip(payload_keys, results))
         _LOGGER.debug(f"Data fetched: {list(payload.keys())}")
         return payload
-    
-    async def set_proxy_group(self, group: str, node: str):
-        """
-        Set the proxy group.
-        """
-        response = await self.async_request("PUT", f"proxies/{group}", json_data={"name": node})
-        if response is None:
-            raise APIClientError(f"Failed to set proxy group {group} to {node}.")
 
 class APIAuthError(Exception):
     """Exception class for auth error."""
