@@ -62,15 +62,15 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         Fetch data from API endpoint.
         """
         response: dict[str, Any] = {}
-        isConnected = False
+        is_connected = False
         _LOGGER.debug("Start fetching data from Clash.")
 
         try:
-            isConnected = await self.api.connected(suppress_errors=False)
+            is_connected = await self.api.connected(suppress_errors=False)
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
         
-        if isConnected:
+        if is_connected:
             response = await self.api.fetch_data()
             if not self.device:
                 self.device = await self._get_device()

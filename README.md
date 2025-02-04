@@ -63,6 +63,9 @@ Note the following:
 - [ ] Streaming service availability detection
 - [ ] Automatic proxy node selection for streaming
 
+## Known Issue
+If you're connecting to a Clash behind Nginx or other reverse proxy, it is possible some real-time sensors are not working and showing "unknown" instead. I'm still working on this.
+
 ## Disclaimer
 
 This integration is solely for controlling Clash and is not responsible for any actions taken by users while using Clash. The user is fully responsible for ensuring that their use of Clash complies with all applicable laws and regulations. I make no warranties regarding the accuracy, legality, or appropriateness of Clash or its usage.
