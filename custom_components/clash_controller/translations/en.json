@@ -32,5 +32,109 @@
                 }
         }
       }
-    }
+    },
+    "services": {
+        "reboot_core_service": {
+          "name": "Reboot Clash Core",
+          "description": "Reboot the core of the remote Clash instance. ",
+          "fields": {
+            "device_id": {
+              "name": "Instance",
+              "description": "Select the target instance"
+            }
+          }
+        },
+        "filter_connection_service": {
+            "name": "Filter Connection",
+            "description": "Retrieve and optionally close active connections using keyword filters. Separate multiple keywords with comma \",\". Keywords are case-insensitive.",
+            "fields": {
+                "device_id": {
+                    "name": "Instance",
+                    "description": "Select the target instance"
+                },
+                "close_connection": {
+                    "name": "Close Connection",
+                    "description": "If enabled, retrieved connections will also be closed"
+                },
+                "host": {
+                    "name": "Host",
+                    "description": "Filter by host"
+                },
+                "src_hostname": {
+                    "name": "Source Hostname",
+                    "description": "Filter by source hostname"
+                },
+                "des_hostname": {
+                    "name": "Destination Hostname",
+                    "description": "Filter by destination hostname"
+                }
+            }
+        },
+        "get_latency_service": {
+            "name": "Get Latency",
+            "description": "Get the latency of a specified node or group. Only one field should be provided at a time. A 504 error may occur if the URL is misconfigured or the request times out.",
+            "fields": {
+                "device_id": {
+                    "name": "Instance",
+                    "description": "Select the target instance"
+                },
+                "group": {
+                    "name": "Group Name",
+                    "description": "The proxy group name. Testing a group will also clear its fixed option if set"
+                },
+                "node": {
+                    "name": "Node Name",
+                    "description": "The proxy node name"
+                },
+                "url": {
+                    "name": "URL",
+                    "description": "The URL used to test the latency"
+                },
+                "timeout": {
+                    "name": "Timeout",
+                    "description": "Connection timeout in milliseconds"
+                }
+            }
+        },
+        "dns_query_service": {
+            "name": "DNS Query",
+            "description": "Perform a DNS query with Clash.",
+            "fields": {
+                "device_id": {
+                    "name": "Instance",
+                    "description": "Select the target instance"
+                },
+                "domain_name": {
+                    "name": "Domain Name",
+                    "description": "The domain name to query"
+                },
+                "record_type": {
+                    "name": "Record Type",
+                    "description": "The record type to query. Leave empty to get IPv4 (A) record"
+                }
+            }
+        },
+        "get_rule_service": {
+            "name": "Get Rule",
+            "description": "Get rules using keyword filters.",
+            "fields": {
+                "device_id": {
+                    "name": "Instance",
+                    "description": "Select the target instance"
+                },
+                "rule_type": {
+                    "name": "Type",
+                    "description": "The type of the rule"
+                },
+                "rule_payload": {
+                    "name": "Payload",
+                    "description": "The payload to match"
+                },
+                "rule_proxy": {
+                    "name": "Proxy",
+                    "description": "The proxy method used"
+                }
+            }
+        } 
+    } 
 }

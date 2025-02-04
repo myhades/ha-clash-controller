@@ -27,9 +27,9 @@ async def async_setup_entry(
     }
 
     selects = [
-        select_types[entity_type](coordinator, entityData)
-        for entityData in coordinator.data
-        if (entity_type := entityData.get("entity_type")) in select_types
+        select_types[entity_type](coordinator, entity_data)
+        for entity_data in coordinator.data
+        if (entity_type := entity_data.get("entity_type")) in select_types
     ]
 
     async_add_entities(selects)
@@ -37,16 +37,16 @@ async def async_setup_entry(
 class SelectEntityBase(BaseEntity, SelectEntity):
     """Base select entity class."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
-        self._attr_current_option = self.entityData.get("state")
-        self._attr_options = self.entityData.get("options")
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
+        self._attr_current_option = self.entity_data.get("state")
+        self._attr_options = self.entity_data.get("options")
 
 class GroupSelect(SelectEntityBase):
     """Implementation of a group select."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""

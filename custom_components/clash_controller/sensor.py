@@ -35,9 +35,9 @@ async def async_setup_entry(
     }
 
     sensors = [
-        sensor_types[entity_type](coordinator, entityData)
-        for entityData in coordinator.data
-        if (entity_type := entityData.get("entity_type")) in sensor_types
+        sensor_types[entity_type](coordinator, entity_data)
+        for entity_data in coordinator.data
+        if (entity_type := entity_data.get("entity_type")) in sensor_types
     ]
 
     async_add_entities(sensors)
@@ -45,20 +45,20 @@ async def async_setup_entry(
 class SensorEntityBase(BaseEntity, SensorEntity):
     """Base sensor entity class."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
 
     @property
     def native_value(self) -> int | None:
         """Default state of the base sensor."""
-        value = self.entityData.get("state", None)
+        value = self.entity_data.get("state", None)
         return int(value) if value is not None else None
 
 class TrafficSensor(SensorEntityBase):
     """Implementation of a traffic sensor."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
         self._attr_device_class = SensorDeviceClass.DATA_RATE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = "bit/s"
@@ -68,8 +68,8 @@ class TrafficSensor(SensorEntityBase):
 class TotalTrafficSensor(SensorEntityBase):
     """Implementation of a traffic sensor."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
         self._attr_device_class = SensorDeviceClass.DATA_SIZE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = "B"
@@ -79,15 +79,15 @@ class TotalTrafficSensor(SensorEntityBase):
 class ConnectionSensor(SensorEntityBase):
     """Implementation of a traffic sensor."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
         self._attr_state_class = SensorStateClass.MEASUREMENT
 
 class MemorySensor(SensorEntityBase):
     """Implementation of a memory sensor."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
         self._attr_device_class = SensorDeviceClass.DATA_SIZE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = "B"
@@ -97,10 +97,10 @@ class MemorySensor(SensorEntityBase):
 class GroupSensor(SensorEntityBase):
     """Implementation of a memory sensor."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
     
     @property
     def native_value(self) -> int | None:
         """Default state of the base sensor."""
-        return self.entityData.get("state", None)
+        return self.entity_data.get("state", None)

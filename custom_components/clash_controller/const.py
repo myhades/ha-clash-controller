@@ -3,6 +3,7 @@
 DOMAIN = "clash_controller"
 DEFAULT_SCAN_INTERVAL = 60
 MIN_SCAN_INTERVAL = 10
+MAX_CONCURRENT_CONNECTIONS = 5
 
 REBOOT_CORE_SERVICE_NAME = "reboot_core_service"
 GET_LATENCY_SERVICE_NAME = "get_latency_service"

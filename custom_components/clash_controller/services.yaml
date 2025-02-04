@@ -1,95 +1,64 @@
 reboot_core_service:
-  name: Reboot Clash Core
-  description: >
-    Reboot the core of the remote Clash instance. 
   fields:
     device_id:
-      name: Instance
-      description: Select the target instance.
       required: true
       selector:
         device:
           integration: clash_controller
 
 filter_connection_service:
-  name: Filter Connection
-  description: >
-    Retrieve and optionally close active connections using keyword filters. Separate multiple keywords with comma ",". Keywords are case-insensitive.
   fields:
     device_id:
-      name: Instance
-      description: Select the target instance.
       required: true
       selector:
         device:
           integration: clash_controller
     close_connection:
-      name: Close Connection
-      description: If enabled, retrieved connections will also be closed.
       default: false
       example: false
       required: true
       selector:
         boolean:
     host:
-      name: Host
-      description: Filter by host. 
       example: "netflix.com, youtube"
       required: false
       selector:
         text:
     src_hostname:
-      name: Source Hostname
-      description: Filter by source hostname.
       example: "192.168.1.1"
       required: false
       selector:
         text:
     des_hostname:
-      name: Destination Hostname
-      description: Filter by destination hostname.
       example: "210.61.187.240"
       required: false
       selector:
         text:
 
 get_latency_service:
-  name: Get Latency
-  description: >
-    Get the latency of a specified node or group. Only one field should be provided at a time. A 504 error may occur if the URL is misconfigured or the request times out.
   fields:
     device_id:
-      name: Instance
-      description: Select the target instance.
       required: true
       selector:
         device:
           integration: clash_controller
     group:
-      name: Group Name
-      description: The proxy group name. Testing a group will also clear its fixed option if set.
       example: "Proxy"
       required: false
       selector:
         text:
     node:
-      name: Node Name
-      description: The proxy node name.
       example: "Fast-01"
       required: false
       selector:
         text:
     url:
-      name: URL
-      description: The URL used to test the latency.
       example: "http://www.gstatic.com/generate_204"
       default: "http://www.gstatic.com/generate_204"
       required: false
       selector:
         text:
     timeout:
-      name: Timeout
-      description: Connection timeout in milliseconds.
       example: 5000
       default: 5000
       required: false
@@ -101,27 +70,18 @@ get_latency_service:
           mode: "box"
 
 dns_query_service:
-  name: DNS Query
-  description: >
-    Perform a DNS query with Clash.
   fields:
     device_id:
-      name: Instance
-      description: Select the target instance.
       required: true
       selector:
         device:
           integration: clash_controller
     domain_name:
-      name: Domain Name
-      description: The domain name to query.
       example: "google.com"
       required: true
       selector:
         text:
     record_type:
-      name: Record Type
-      description: The record type to query. Leave empty to get IPv4 (A) record.
       example: "A"
       default: "A"
       required: false
@@ -129,34 +89,23 @@ dns_query_service:
         text:
 
 get_rule_service:
-  name: Get Rule
-  description: >
-    Get rules using keyword filters.
   fields:
     device_id:
-      name: Instance
-      description: Select the target instance.
       required: true
       selector:
         device:
           integration: clash_controller
     rule_type:
-      name: Type
-      description: The type of the rule.
       example: "DomainSuffix"
       required: false
       selector:
         text:
     rule_payload:
-      name: Payload
-      description: The payload to match.
       example: "google.com"
       required: false
       selector:
         text:
     rule_proxy:
-      name: Proxy
-      description: The proxy method used.
       example: "DIRECT"
       required: false
       selector:

@@ -75,40 +75,45 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
             if not self.device:
                 self.device = await self._get_device()
 
+        traffic = response.get("traffic", {})
+        connections = response.get("connections", {})
+        memory = response.get("memory", {})
+        group = response.get("group", {})
+
         entity_data = [
             {
                 "name": "Upload Speed",
-                "state": response.get("traffic").get("up"),
+                "state": traffic.get("up"),
                 "entity_type": "traffic_sensor",
                 "icon": "mdi:arrow-up"
             },
             {
                 "name": "Download Speed",
-                "state": response.get("traffic").get("down"),
+                "state": traffic.get("down"),
                 "entity_type": "traffic_sensor",
                 "icon": "mdi:arrow-down",
             },
             {
                 "name": "Upload Traffic",
-                "state": response.get("connections").get("uploadTotal"),
+                "state": connections.get("uploadTotal"),
                 "entity_type": "total_traffic_sensor",
                 "icon": "mdi:tray-arrow-up"
             },
             {
                 "name": "Download Traffic",
-                "state": response.get("connections").get("downloadTotal"),
+                "state": connections.get("downloadTotal"),
                 "entity_type": "total_traffic_sensor",
                 "icon": "mdi:tray-arrow-down",
             },
             {
                 "name": "Memory Used",
-                "state": response.get("memory").get("inuse"),
+                "state": memory.get("inuse"),
                 "entity_type": "memory_sensor",
                 "icon": "mdi:memory",
             },
             {
                 "name": "Connection Number",
-                "state": len(response.get("connections").get("connections") or {}),
+                "state": len(connections.get("connections", []) or []),
                 "entity_type": "connection_sensor",
                 "icon": "mdi:transit-connection",
             },
@@ -123,8 +128,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
             }
         ]
         group_selector_items = ["tfo", "type", "udp", "xudp", "alive", "history"]
-        group_sensor_items = group_selector_items + ["all", "testUrl"]
-        for item in response.get("group").get("proxies"):
+        group_sensor_items = group_selector_items + ["all"]
+
+        for item in group.get("proxies", []):
             if item.get("type") in ["Selector", "Fallback"]:
                 entity_data.append({
                     "name": item.get("name"),
@@ -142,6 +148,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
                     "icon": "mdi:network-outline",
                     "attributes": {k: item[k] for k in group_sensor_items if k in item},
                 })
+
         for item in entity_data:
             item["unique_id"] = f"{self.api.device_id}_{item['name'].lower().replace(' ', '_')}"
 

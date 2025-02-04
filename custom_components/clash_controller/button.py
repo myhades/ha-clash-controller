@@ -26,9 +26,9 @@ async def async_setup_entry(
     }
 
     buttons = [
-        button_types[entity_type](coordinator, entityData)
-        for entityData in coordinator.data
-        if (entity_type := entityData.get("entity_type")) in button_types
+        button_types[entity_type](coordinator, entity_data)
+        for entity_data in coordinator.data
+        if (entity_type := entity_data.get("entity_type")) in button_types
     ]
 
     async_add_entities(buttons)
@@ -36,12 +36,12 @@ async def async_setup_entry(
 class ButtonEntityBase(BaseEntity, ButtonEntity):
     """Base button entity class."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entityData: dict) -> None:
-        super().__init__(coordinator, entityData)
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
 
     async def async_press(self) -> None:
         """Press action."""
-        method = self.entityData.get("action").get("method")
-        args = self.entityData.get("action").get("args", [])
+        method = self.entity_data.get("action").get("method")
+        args = self.entity_data.get("action").get("args", [])
         await method(*args)
         self.async_write_ha_state()

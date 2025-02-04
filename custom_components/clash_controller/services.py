@@ -12,6 +12,8 @@ from homeassistant.helpers import device_registry as dr
 
 from .const import (
     DOMAIN,
+    MAX_CONCURRENT_CONNECTIONS,
+
     REBOOT_CORE_SERVICE_NAME,
     FILTER_CONNECTION_SERVICE_NAME,
     GET_LATENCY_SERVICE_NAME,
@@ -180,7 +182,7 @@ class ClashServicesSetup:
         except Exception as err:
             raise HomeAssistantError(f"Error getting connections: {err}") from err
 
-        connections = response.get("connections", [])
+        connections = response.get("connections", []) or []
         filtered_connections = [conn for conn in connections if filter_connection(conn)]
 
         service_response = {
@@ -194,7 +196,7 @@ class ClashServicesSetup:
 
         try:
             if hosts or src_hosts or des_hosts:
-                semaphore = asyncio.Semaphore(5)
+                semaphore = asyncio.Semaphore(MAX_CONCURRENT_CONNECTIONS)
                 await asyncio.gather(*[
                     delete_connection(conn["id"]) for conn in filtered_connections
                 ])
@@ -211,6 +213,8 @@ class ClashServicesSetup:
         coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
 
         def sort_group(data: dict) -> dict:
+            if not data:
+                return {"fastest_node": None,"latency": []}
             sorted_items = sorted(data.items(), key=lambda x: x[1])
             return {
                 "fastest_node": sorted_items[0][0],
@@ -221,6 +225,7 @@ class ClashServicesSetup:
         node = service_call.data.get(NODE_NAME, "").strip()
         url = service_call.data.get(TEST_URL, "http://www.gstatic.cn/generate_204")
         timeout = service_call.data.get(TEST_TIMEOUT, 5000)
+        
         if bool(group) ^ bool(node) is False:
             raise HomeAssistantError("Exactly one of the group or node should be provided.")
 
@@ -237,7 +242,7 @@ class ClashServicesSetup:
         if group:
             return sort_group(response)
         else:
-            return {"latency": {node: response.get("delay", -1)}}
+            return {"latency": {node: response.get("delay", [])}}
 
     async def async_dns_query_service(self, service_call: ServiceCall) -> dict:
         """Execute service call for performing a DNS query."""

@@ -1,6 +1,6 @@
 """API class for Clash Controller."""
 
-from typing import Any, Optional
+from typing import Optional
 import asyncio
 import json
 import logging
@@ -106,16 +106,17 @@ class ClashAPI:
         json_data: dict = None,
         read_line: int = 0,
         suppress_errors: bool = True,
-        ) -> Any:
+        ) -> dict:
         """
         General async request method.
         """
         try:
-            return await self._request(method, endpoint, params=params, json_data=json_data, read_line=read_line)
+            response = await self._request(method, endpoint, params=params, json_data=json_data, read_line=read_line)
         except Exception:
             if suppress_errors:
-                return None
+                return {}
             raise
+        return response or {}
 
     async def connected(self, suppress_errors: bool = True) -> bool:
         """
@@ -137,7 +138,7 @@ class ClashAPI:
         """
         Get the version string.
         """
-        response = await self.async_request("GET", "version") or {}
+        response = await self.async_request("GET", "version")
         return {
             "meta": "Meta Core" if response and response.get("meta") is True else "Non-Meta Core",
             "version": response.get("version", "unknown"),
@@ -157,10 +158,8 @@ class ClashAPI:
         results = await asyncio.gather(*[
             self.async_request("GET", endpoint, **params)
             for endpoint, params in endpoints
-        ])
-        payload = dict(zip(payload_keys, results))
-        _LOGGER.debug(f"Data fetched: {list(payload.keys())}")
-        return payload
+        ], return_exceptions=True)
+        return dict(zip(payload_keys, results))
 
 class APIAuthError(Exception):
     """Exception class for auth error."""

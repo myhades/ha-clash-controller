@@ -32,5 +32,109 @@
                 }
             }
         }
+    },
+    "services": {
+        "reboot_core_service": {
+            "name": "重启 Clash 核心",
+            "description": "重启远程 Clash 实例的核心。",
+            "fields": {
+                "device_id": {
+                    "name": "实例",
+                    "description": "选择目标实例"
+                }
+            }
+        },
+        "filter_connection_service": {
+            "name": "筛选连接",
+            "description": "使用关键字筛选活动连接，并可选择关闭连接。多个关键字请用逗号 \",\" 分隔。关键字不区分大小写。",
+            "fields": {
+                "device_id": {
+                    "name": "实例",
+                    "description": "选择目标实例"
+                },
+                "close_connection": {
+                    "name": "关闭连接",
+                    "description": "如果启用，筛选出的连接将被关闭"
+                },
+                "host": {
+                    "name": "主机",
+                    "description": "按主机筛选"
+                },
+                "src_hostname": {
+                    "name": "源主机名",
+                    "description": "按源主机名筛选"
+                },
+                "des_hostname": {
+                    "name": "目标主机名",
+                    "description": "按目标主机名筛选"
+                }
+            }
+        },
+        "get_latency_service": {
+            "name": "获取延迟",
+            "description": "获取指定节点或组的延迟，每次只能提供一个字段。如果 URL 配置错误或请求超时，可能会返回 504 错误",
+            "fields": {
+                "device_id": {
+                    "name": "实例",
+                    "description": "选择目标实例"
+                },
+                "group": {
+                    "name": "策略组名称",
+                    "description": "策略组名称，获取策略组延迟将清除固定选项"
+                },
+                "node": {
+                    "name": "节点名称",
+                    "description": "代理节点名称"
+                },
+                "url": {
+                    "name": "URL",
+                    "description": "用于测试延迟的 URL"
+                },
+                "timeout": {
+                    "name": "超时时间",
+                    "description": "连接超时时间（毫秒）"
+                }
+            }
+        },
+        "dns_query_service": {
+            "name": "DNS 查询",
+            "description": "使用 Clash 进行 DNS 查询。",
+            "fields": {
+                "device_id": {
+                    "name": "实例",
+                    "description": "选择目标实例"
+                },
+                "domain_name": {
+                    "name": "域名",
+                    "description": "要查询的域名"
+                },
+                "record_type": {
+                    "name": "记录类型",
+                    "description": "要查询的记录类型，留空将获取 IPv4 (A) 记录"
+                }
+            }
+        },
+        "get_rule_service": {
+            "name": "获取规则",
+            "description": "使用关键字筛选规则。",
+            "fields": {
+                "device_id": {
+                    "name": "实例",
+                    "description": "选择目标实例"
+                },
+                "rule_type": {
+                    "name": "类型",
+                    "description": "规则的类型"
+                },
+                "rule_payload": {
+                    "name": "匹配内容",
+                    "description": "用于匹配的内容"
+                },
+                "rule_proxy": {
+                    "name": "代理方式",
+                    "description": "使用的代理方式"
+                }
+            }
+        }
     }
 }
