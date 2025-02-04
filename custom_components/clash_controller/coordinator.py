@@ -108,7 +108,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
             },
             {
                 "name": "Connection Number",
-                "state": len(response.get("connections").get("connections")),
+                "state": len(response.get("connections").get("connections") or {}),
                 "entity_type": "connection_sensor",
                 "icon": "mdi:transit-connection",
             },

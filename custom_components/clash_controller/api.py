@@ -137,7 +137,7 @@ class ClashAPI:
         """
         Get the version string.
         """
-        response = await self.async_request("GET", "version")
+        response = await self.async_request("GET", "version") or {}
         return {
             "meta": "Meta Core" if response and response.get("meta") is True else "Non-Meta Core",
             "version": response.get("version", "unknown"),

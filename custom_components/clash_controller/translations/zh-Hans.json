@@ -1,0 +1,36 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Clash 控制器设置",
+                "data": {
+                    "api_url": "API 地址",
+                    "bearer_token": "令牌",
+                    "use_ssl": "使用 HTTPS",
+                    "allow_unsafe": "允许不安全的 SSL 证书"
+                },
+                "description": "请输入您的 Clash 实例的 API 地址和令牌。例如：192.168.1.1:9090，clash.mydomain.com。如果地址是 IP，请确保是静态地址。"
+            }
+        },        
+        "error": {
+            "cannot_connect": "无法连接到 API，请验证地址后重试。",
+            "invalid_token": "提供的 API 令牌无效，请检查后重试。",
+            "unknown": "发生意外错误，请稍后重试。",
+            "timed_out": "API 连接超时， Clash 是否在运行？"
+        },
+        "abort": {
+            "already_configured": "此位置的实例已添加，请使用配置按钮更新令牌并修改设置。"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "description": "修改此条目的选项。",
+                "title": "Clash 控制器选项",
+                "data": {
+                    "scan_interval": "扫描间隔（秒）"
+                }
+            }
+        }
+    }
+}

@@ -19,7 +19,7 @@
             "timed_out": "API connection timed out. Is Clash running?"
         },
         "abort": {
-            "already_configured": "The instance at this location is already configured. Use options to update token and modify settings."
+            "already_configured": "The instance at this location is already added. Use configure button to update token and modify settings."
           }
     },
     "options": {
