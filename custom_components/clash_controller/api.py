@@ -6,10 +6,25 @@ import json
 import logging
 import re
 import ssl
+import time
 
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
+
+SERVICE_TABLE = {
+    "netflix": {
+        "name": "Netflix",
+        "icon": "mdi:netflix",
+        "url": "https://www.netflix.com/title/81280792",
+        "code_table":{
+            200: "unlocked",
+            403: "blocked",
+            404: "original_only",
+            000: "unavailable",
+        },
+    },
+}
 
 class ClashAPI:
     """A utility class to interact with the Clash API."""
@@ -150,12 +165,38 @@ class ClashAPI:
             "version": response.get("version", "unknown"),
         }
 
-    async def fetch_data(self) -> dict:
+    async def get_url_status(self, url: str, headers: dict = {}) -> dict:
+        """
+        Get the status code and latency to the given URL.
+        """
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                start_time = time.monotonic()
+                async with session.get(url, headers=headers, timeout=10) as response:
+                    response.raise_for_status()
+                    duration = time.monotonic() - start_time
+                    return {"latency": duration, "status_code": response.status}
+            except aiohttp.ClientResponseError as err:
+                return {"latency": None, "status_code": err.status}
+            except asyncio.TimeoutError:
+                return {"latency": None, "status_code": 000}
+            except Exception as err:
+                _LOGGER.error(f"Error getting status code for {url}: {err}")
+                return {"latency": None, "status_code": 000}
+
+    async def fetch_data(self, streaming_detection: bool = False) -> dict:
         """
         Get all data needed to update the entities.
         """
+
+        async def fetch_streaming_service_data():
+            results = await asyncio.gather(*[
+                self.get_url_status(details["url"])
+                for service, details in SERVICE_TABLE.items()
+            ], return_exceptions=True)
+            return dict(zip((s for s in SERVICE_TABLE), results))
         
-        payload_keys = ["memory", "traffic", "connections", "group"]
         endpoints = [
             ("memory", {"read_line": 2}),
             ("traffic", {"read_line": 1}),
@@ -166,7 +207,14 @@ class ClashAPI:
             self.async_request("GET", endpoint, **params)
             for endpoint, params in endpoints
         ], return_exceptions=True)
-        return dict(zip(payload_keys, results))
+        data = dict(zip((e[0] for e in endpoints), results))
+
+        if streaming_detection:
+            streaming_data = await fetch_streaming_service_data()
+            data["streaming"] = streaming_data
+            _LOGGER.debug(f"Streaming detection data: {streaming_data}")
+
+        return data
 
 class APIAuthError(Exception):
     """Exception class for auth error."""

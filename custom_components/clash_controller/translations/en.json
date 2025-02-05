@@ -1,4 +1,5 @@
 {
+    "title": "Clash Controller",
     "config": {
         "step": {
             "user": {
@@ -25,15 +26,23 @@
     "options": {
         "step": {
             "init": {
-                "description": "Modify options of this entry.",
+                "description": "Modify options of this entry. To detect streaming service availability, Home Assistant must connect through the same proxy being tested.",
                 "title": "Clash Controller Options",
                 "data": {
                     "scan_interval": "Scan Interval (seconds)",
                     "concurrent_connections": "Concurrent Connections",
-                    "bearer_token": "Update Bearer Token (Leave empty to skip)"
+                    "bearer_token": "Update Bearer Token (Leave empty to skip)",
+                    "streaming_detection": "Enable Streaming Service Availability Detection"
                 }
         }
       }
+    },
+    "entity": {
+        "sensor": {
+          "thermostat_mode": {
+            "name": "Thermostat mode"
+          }
+        }
     },
     "services": {
         "reboot_core_service": {

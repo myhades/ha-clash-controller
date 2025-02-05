@@ -1,4 +1,5 @@
 {
+    "title": "Clash 控制器",
     "config": {
         "step": {
             "user": {
@@ -25,12 +26,13 @@
     "options": {
         "step": {
             "init": {
-                "description": "修改此条目的选项。",
+                "description": "修改此条目的选项。检测流媒体服务可用性时，Home Assistant 必须通过同一代理进行连接。",
                 "title": "Clash 控制器选项",
                 "data": {
                     "scan_interval": "扫描间隔（秒）",
                     "concurrent_connections": "并发连接数",
-                    "bearer_token": "更新令牌（留空则跳过）"
+                    "bearer_token": "更新令牌（留空则跳过）",
+                    "streaming_detection": "流媒体可用性检测"
                 }
             }
         }

@@ -10,15 +10,16 @@ from homeassistant.core import DOMAIN, HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import ClashAPI
+from .api import ClashAPI, SERVICE_TABLE
 from .const import (
     DEFAULT_SCAN_INTERVAL,
-    CONF_CONCURRENT_CONNECTIONS,
     DEFAULT_CONCURRENT_CONNECTIONS,
+    DEFAULT_STREAMING_DETECTION,
+    CONF_CONCURRENT_CONNECTIONS,
+    CONF_STREAMING_DETECTION,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
 
 class ClashControllerCoordinator(DataUpdateCoordinator):
     """A coordinator to fetch data from the Clash API."""
@@ -38,6 +39,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         )
         self.concurrent_connections = config_entry.options.get(
             CONF_CONCURRENT_CONNECTIONS, DEFAULT_CONCURRENT_CONNECTIONS
+        )
+        self.streaming_detection = config_entry.options.get(
+            CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION
         )
 
         super().__init__(
@@ -78,7 +82,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {err}") from err
         
         if is_connected:
-            response = await self.api.fetch_data()
+            response = await self.api.fetch_data(streaming_detection=self.streaming_detection)
             if not self.device:
                 self.device = await self._get_device()
 
@@ -86,6 +90,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         connections = response.get("connections", {})
         memory = response.get("memory", {})
         group = response.get("group", {})
+        streaming = response.get("streaming", {})
 
         entity_data = [
             {
@@ -154,6 +159,22 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
                     "entity_type": "proxy_group_sensor",
                     "icon": "mdi:network-outline",
                     "attributes": {k: item[k] for k in group_sensor_items if k in item},
+                })
+
+        if self.streaming_detection:
+            for service, details in streaming.items():
+
+                service_info = SERVICE_TABLE.get(service)
+                code_stable = service_info.get("code_table", {})
+                code = details.get("status_code", 000)
+
+                entity_data.append({
+                    "name": service_info.get("name","Unknown Service"),
+                    "state": code_stable.get(code, "unknown"),
+                    "icon": service_info.get("icon", "mdi:play"),
+                    "attributes": details,
+                    "options": [status for _, status in code_stable.items()] + ["unknown"],
+                    "entity_type": "streaming_detection",
                 })
 
         for item in entity_data:

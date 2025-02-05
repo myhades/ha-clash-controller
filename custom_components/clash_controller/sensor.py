@@ -8,7 +8,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base import BaseEntity
@@ -16,7 +16,6 @@ from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator
 
 _LOGGER = logging.getLogger(__name__)
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -32,6 +31,7 @@ async def async_setup_entry(
         "total_traffic_sensor": TotalTrafficSensor,
         "connection_sensor": ConnectionSensor,
         "proxy_group_sensor": GroupSensor,
+        "streaming_detection": StreamingSensor,
     }
 
     sensors = [
@@ -102,5 +102,18 @@ class GroupSensor(SensorEntityBase):
     
     @property
     def native_value(self) -> int | None:
+        """Default state of the base sensor."""
+        return self.entity_data.get("state", None)
+
+class StreamingSensor(SensorEntityBase):
+    """Implementation of a streaming service detection sensor."""
+
+    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+        super().__init__(coordinator, entity_data)
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self.options = self.entity_data.get("options", None)
+    
+    @property
+    def native_value(self) -> str | None:
         """Default state of the base sensor."""
         return self.entity_data.get("state", None)

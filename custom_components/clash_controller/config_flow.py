@@ -21,11 +21,17 @@ from homeassistant.helpers import config_validation as cv
 from .api import ClashAPI, APITimeoutError, APIAuthError, APIClientError
 from .const import (
     DOMAIN,
-    DEFAULT_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
-    CONF_CONCURRENT_CONNECTIONS,
-    DEFAULT_CONCURRENT_CONNECTIONS,
+    DEFAULT_SCAN_INTERVAL,
     MIN_CONCURRENT_CONNECTIONS,
+    DEFAULT_CONCURRENT_CONNECTIONS,
+    DEFAULT_STREAMING_DETECTION,
+    CONF_API_URL,
+    CONF_BEAR_TOKEN,
+    CONF_USE_SSL,
+    CONF_ALLOW_UNSAFE,
+    CONF_CONCURRENT_CONNECTIONS,
+    CONF_STREAMING_DETECTION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,6 +50,12 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         if not api_url.endswith('/'):
             api_url += '/'
         return api_url
+    
+    async def _set_unique_id(self, api_url: str):
+        unique_id = re.sub(r"[^a-zA-Z0-9]", "_", api_url.strip().lower().rstrip("_"))
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+        return unique_id
 
     async def _test_connection(api: ClashAPI):
         errors = {}
@@ -67,18 +79,17 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is None:
             user_input = {}
 
-        api_url = user_input.get("api_url", "")
-        token = user_input.get("bearer_token", "")
-        use_ssl = user_input.get("use_ssl", False)
-        allow_unsafe = user_input.get("allow_unsafe", False)
+        api_url = user_input.get(CONF_API_URL, "")
+        token = user_input.get(CONF_BEAR_TOKEN, "")
+        use_ssl = user_input.get(CONF_USE_SSL, False)
+        allow_unsafe = user_input.get(CONF_ALLOW_UNSAFE, False)
 
         if user_input:
 
             api_url = self._normalize_url(api_url, use_ssl)
-            user_input["api_url"] = api_url
-            unique_id = re.sub(r"[^a-zA-Z0-9]", "_", api_url.strip().lower().rstrip("_"))
-            await self.async_set_unique_id(unique_id)
-            self._abort_if_unique_id_configured()
+            user_input[CONF_API_URL] = api_url
+
+            self._set_unique_id(api_url)
 
             errors = await self._test_connection(ClashAPI(api_url, token, allow_unsafe))
             if "base" not in errors:
@@ -87,10 +98,10 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required("api_url", default=api_url): cv.string,
-                vol.Required("bearer_token", default=token): cv.string,
-                vol.Optional("use_ssl", default=use_ssl): cv.boolean,
-                vol.Optional("allow_unsafe", default=allow_unsafe): cv.boolean,
+                vol.Required(CONF_API_URL, default=api_url): cv.string,
+                vol.Required(CONF_BEAR_TOKEN, default=token): cv.string,
+                vol.Optional(CONF_USE_SSL, default=use_ssl): cv.boolean,
+                vol.Optional(CONF_ALLOW_UNSAFE, default=allow_unsafe): cv.boolean,
             }),
             errors=errors
         )
@@ -117,10 +128,11 @@ class ClashControllerOptionsFlow(OptionsFlow):
             options = dict(self.config_entry.options)
             options[CONF_SCAN_INTERVAL] = user_input[CONF_SCAN_INTERVAL]
             options[CONF_CONCURRENT_CONNECTIONS] = user_input[CONF_CONCURRENT_CONNECTIONS]
+            options[CONF_STREAMING_DETECTION] = user_input[CONF_STREAMING_DETECTION]
 
-            if user_input.get("bearer_token"):
+            if user_input.get(CONF_BEAR_TOKEN):
                 data = dict(self.config_entry.data)
-                data["bearer_token"] = user_input["bearer_token"]
+                data[CONF_BEAR_TOKEN] = user_input[CONF_BEAR_TOKEN]
                 self.hass.config_entries.async_update_entry(self.config_entry, data=data)
 
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
@@ -137,6 +149,13 @@ class ClashControllerOptionsFlow(OptionsFlow):
                     CONF_CONCURRENT_CONNECTIONS,
                     default=self.options.get(CONF_CONCURRENT_CONNECTIONS, DEFAULT_CONCURRENT_CONNECTIONS),
                 ): vol.All(vol.Coerce(int), vol.Clamp(min=MIN_CONCURRENT_CONNECTIONS)),
-                vol.Optional("bearer_token"): cv.string,
+                vol.Optional(
+                    CONF_BEAR_TOKEN,
+                    default=""
+                ): cv.string,
+                vol.Optional(
+                    CONF_STREAMING_DETECTION,
+                    default=self.options.get(CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION)
+                ): cv.boolean,
             })
         )
