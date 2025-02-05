@@ -57,7 +57,7 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
         return unique_id
 
-    async def _test_connection(api: ClashAPI):
+    async def _test_connection(self, api: ClashAPI):
         errors = {}
         try:
             await api.connected(suppress_errors=False)

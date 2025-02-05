@@ -97,42 +97,49 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
                 "name": "Upload Speed",
                 "state": traffic.get("up"),
                 "entity_type": "traffic_sensor",
-                "icon": "mdi:arrow-up"
+                "icon": "mdi:arrow-up",
+                "translation_key": "up_speed",
             },
             {
                 "name": "Download Speed",
                 "state": traffic.get("down"),
                 "entity_type": "traffic_sensor",
                 "icon": "mdi:arrow-down",
+                "translation_key": "down_speed",
             },
             {
                 "name": "Upload Traffic",
                 "state": connections.get("uploadTotal"),
                 "entity_type": "total_traffic_sensor",
-                "icon": "mdi:tray-arrow-up"
+                "icon": "mdi:tray-arrow-up",
+                "translation_key": "up_traffic",
             },
             {
                 "name": "Download Traffic",
                 "state": connections.get("downloadTotal"),
                 "entity_type": "total_traffic_sensor",
                 "icon": "mdi:tray-arrow-down",
+                "translation_key": "down_traffic",
             },
             {
                 "name": "Memory Used",
                 "state": memory.get("inuse"),
                 "entity_type": "memory_sensor",
                 "icon": "mdi:memory",
+                "translation_key": "memory_used",
             },
             {
                 "name": "Connection Number",
                 "state": len(connections.get("connections", []) or []),
                 "entity_type": "connection_sensor",
                 "icon": "mdi:transit-connection",
+                "translation_key": "connection_number",
             },
             {
                 "name": "Flush FakeIP Cache",
                 "entity_type": "fakeip_flush_button",
                 "icon": "mdi:broom",
+                "translation_key": "flush_cache",
                 "action":{
                     "method": self.api.async_request,
                     "args": ("POST", "cache/fakeip/flush")
@@ -175,6 +182,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
                     "attributes": details,
                     "options": [status for _, status in code_stable.items()] + ["unknown"],
                     "entity_type": "streaming_detection",
+                    "translation_key": service + "_service",
                 })
 
         for item in entity_data:

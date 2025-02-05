@@ -37,6 +37,49 @@
             }
         }
     },
+    "entity": {
+        "select":{
+          "flush_cache": {
+            "name": "清除 FakeIP 缓存"
+          }
+        },
+        "sensor": {
+          "up_speed": {
+            "name": "上传速度"
+          },
+          "down_speed": {
+            "name": "下载速度"
+          },
+          "up_traffic": {
+            "name": "上传流量"
+          },
+          "down_traffic": {
+            "name": "下载流量"
+          },
+          "memory_used": {
+            "name": "内存占用"
+          },
+          "connection_sensor": {
+            "name": "连接数"
+          },
+          "netflix_service": {
+            "name": "Netflix",
+            "state":{
+                "unlocked": "已解锁",
+                "blocked": "未解锁",
+                "original_only": "仅限原创"
+            },
+            "state_attributes":{
+                "latency": {
+                    "name": "延迟"
+                },
+                "status_code": {
+                    "name": "状态码"
+                }
+            }
+          }
+        }
+    },
     "services": {
         "reboot_core_service": {
             "name": "重启 Clash 核心",

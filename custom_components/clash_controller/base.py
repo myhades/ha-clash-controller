@@ -37,3 +37,8 @@ class BaseEntity(CoordinatorEntity):
         """Default extra state attributes for base sensor."""
         return self.entity_data.get("attributes", None)
 
+    @property
+    def translation_key(self):
+        """Default translation_key for base sensor."""
+        return self.entity_data.get("translation_key", None)
+

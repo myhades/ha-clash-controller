@@ -178,12 +178,13 @@ class ClashAPI:
                     duration = time.monotonic() - start_time
                     return {"latency": duration, "status_code": response.status}
             except aiohttp.ClientResponseError as err:
-                return {"latency": None, "status_code": err.status}
+                duration = time.monotonic() - start_time
+                return {"latency": duration, "status_code": err.status}
             except asyncio.TimeoutError:
-                return {"latency": None, "status_code": 000}
+                return {"latency": -1, "status_code": 000}
             except Exception as err:
                 _LOGGER.error(f"Error getting status code for {url}: {err}")
-                return {"latency": None, "status_code": 000}
+                return {"latency": -1, "status_code": 000}
 
     async def fetch_data(self, streaming_detection: bool = False) -> dict:
         """
