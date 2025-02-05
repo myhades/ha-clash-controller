@@ -124,7 +124,7 @@ class ClashControllerOptionsFlow(OptionsFlow):
                 data["bearer_token"] = user_input["bearer_token"]
                 self.hass.config_entries.async_update_entry(self.config_entry, data=data)
 
-            self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
@@ -133,11 +133,11 @@ class ClashControllerOptionsFlow(OptionsFlow):
                 vol.Required(
                     CONF_SCAN_INTERVAL,
                     default=self.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-                ): (vol.All(vol.Coerce(int), vol.Clamp(min=MIN_SCAN_INTERVAL))),
+                ): vol.All(vol.Coerce(int), vol.Clamp(min=MIN_SCAN_INTERVAL)),
                 vol.Required(
                     CONF_CONCURRENT_CONNECTIONS,
                     default=self.options.get(CONF_CONCURRENT_CONNECTIONS, DEFAULT_CONCURRENT_CONNECTIONS),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_CONCURRENT_CONNECTIONS, max=MAX_CONCURRENT_CONNECTIONS)),
+                ): vol.All(vol.Coerce(int), vol.Clamp(min=MIN_CONCURRENT_CONNECTIONS)),
                 vol.Optional("bearer_token"): cv.string,
             })
         )

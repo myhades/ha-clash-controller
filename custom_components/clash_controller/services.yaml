@@ -130,7 +130,7 @@ api_call_service:
         text:
     api_params:
       example: "{\"name\": \"Fast-01\"}"
-      false: true
+      required: true
       selector:
         text:
     api_data:
