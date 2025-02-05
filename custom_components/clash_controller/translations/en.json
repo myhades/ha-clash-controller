@@ -28,7 +28,9 @@
                 "description": "Modify options of this entry.",
                 "title": "Clash Controller Options",
                 "data": {
-                    "scan_interval": "Scan Interval (seconds)"
+                    "scan_interval": "Scan Interval (seconds)",
+                    "concurrent_connections": "Concurrent Connections",
+                    "bearer_token": "Update Bearer Token (Leave empty to skip)"
                 }
         }
       }
@@ -133,6 +135,36 @@
                 "rule_proxy": {
                     "name": "Proxy",
                     "description": "The proxy method used"
+                }
+            }
+        },
+        "api_call_service": {
+            "name": "API Call",
+            "description": "Perform a general API call to Clash and optionally retrieve response.",
+            "fields": {
+                "device_id": {
+                    "name": "Instance",
+                    "description": "Select the target instance"
+                },
+                "api_endpoint": {
+                    "name": "Endpoint",
+                    "description": "The API endpoint to be used"
+                },
+                "api_method": {
+                    "name": "Method",
+                    "description": "The HTTP method (GET, POST, etc.)"
+                },
+                "api_params": {
+                    "name": "Parameters",
+                    "description": "The query parameters for the request. Needs to be a valid json string"
+                },
+                "api_data": {
+                    "name": "Payload",
+                    "description": "The json body sent in the request. Needs to be a valid json string"
+                },
+                "read_line": {
+                    "name": "Read Line",
+                    "description": "Indicates to read the n-th line for a chunked response"
                 }
             }
         } 

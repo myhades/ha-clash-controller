@@ -110,3 +110,40 @@ get_rule_service:
       required: false
       selector:
         text:
+
+api_call_service:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: clash_controller
+    api_endpoint:
+      example: "proxies/proxies_name"
+      required: true
+      selector:
+        text:
+    api_method:
+      example: "GET"
+      required: true
+      selector:
+        text:
+    api_params:
+      example: "{\"name\": \"Fast-01\"}"
+      false: true
+      selector:
+        text:
+    api_data:
+      example: "{\"data\": \"Some raw data\"}"
+      false: true
+      selector:
+        text:
+    read_line:
+      example: "0"
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 1
+          mode: "slider"

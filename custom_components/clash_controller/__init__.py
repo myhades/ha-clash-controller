@@ -62,18 +62,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 async def _async_update_listener(hass: HomeAssistant, config_entry):
     """Handle config options update."""
+
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 async def async_remove_config_entry_device(
     hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
     """Handle entry removal."""
+
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-
+    
     for service in hass.services.async_services_for_domain(DOMAIN):
         hass.services.async_remove(DOMAIN, service)
     hass.data[DOMAIN][config_entry.entry_id].cancel_update_listener()

@@ -11,7 +11,11 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ClashAPI
-from .const import DEFAULT_SCAN_INTERVAL
+from .const import (
+    DEFAULT_SCAN_INTERVAL,
+    CONF_CONCURRENT_CONNECTIONS,
+    DEFAULT_CONCURRENT_CONNECTIONS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +35,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
 
         self.poll_interval = config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+        )
+        self.concurrent_connections = config_entry.options.get(
+            CONF_CONCURRENT_CONNECTIONS, DEFAULT_CONCURRENT_CONNECTIONS
         )
 
         super().__init__(

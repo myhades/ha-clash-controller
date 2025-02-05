@@ -1,6 +1,7 @@
 """Services for the Clash Controller."""
 
 import asyncio
+import json
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
@@ -12,13 +13,12 @@ from homeassistant.helpers import device_registry as dr
 
 from .const import (
     DOMAIN,
-    MAX_CONCURRENT_CONNECTIONS,
-
     REBOOT_CORE_SERVICE_NAME,
     FILTER_CONNECTION_SERVICE_NAME,
     GET_LATENCY_SERVICE_NAME,
     DNS_QUERY_SERVICE_NAME,
     GET_RULE_SERVICE_NAME,
+    API_CALL_SERVICE_NAME,
 )
 from .coordinator import ClashControllerCoordinator
 
@@ -26,16 +26,24 @@ HOST_KEYWORD = "host"
 SRC_HOSTNAME_KEYWORD = "src_hostname"
 DES_HOSTNAME_KEYWORD = "des_hostname"
 CLOSE_CONNECTION = "close_connection"
+
 GROUP_NAME = "group"
 NODE_NAME = "node"
 TEST_URL = "url"
 TEST_TIMEOUT = "timeout"
+
 DOMAIN_NAME = "domain_name"
 RECORD_TYPE = "record_type"
+
 RULE_TYPE = "rule_type"
 RULE_PAYLOAD = "rule_payload"
 RULE_PROXY = "rule_proxy"
 
+API_ENDPOINT = "api_endpoint"
+API_METHOD = "api_method"
+API_PARAMS = "api_params"
+API_DATA = "api_data"
+API_READ_LINE = "read_line"
 
 REBOOT_CORE_SERVICE_SCHEMA = vol.Schema(
     {
@@ -77,6 +85,17 @@ GET_RULE_SCHEMA = vol.Schema(
         vol.Optional(RULE_TYPE): cv.string,
         vol.Optional(RULE_PAYLOAD): cv.string,
         vol.Optional(RULE_PROXY): cv.string,
+    }
+)
+
+API_CALL_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_DEVICE_ID): cv.string,
+        vol.Required(API_ENDPOINT): cv.string,
+        vol.Required(API_METHOD): cv.string,
+        vol.Optional(API_PARAMS): cv.string,
+        vol.Optional(API_DATA): cv.string,
+        vol.Optional(API_READ_LINE): cv.positive_int,
     }
 )
 
@@ -124,6 +143,13 @@ class ClashServicesSetup:
             self.async_get_rule_service,
             schema=GET_RULE_SCHEMA,
             supports_response=SupportsResponse.ONLY,
+        )
+        self.hass.services.async_register(
+            DOMAIN,
+            API_CALL_SERVICE_NAME,
+            self.async_api_call_service,
+            schema=API_CALL_SCHEMA,
+            supports_response=SupportsResponse.OPTIONAL,
         )
 
     def _get_coordinator(self, device_id: str) -> ClashControllerCoordinator:
@@ -196,7 +222,7 @@ class ClashServicesSetup:
 
         try:
             if hosts or src_hosts or des_hosts:
-                semaphore = asyncio.Semaphore(MAX_CONCURRENT_CONNECTIONS)
+                semaphore = asyncio.Semaphore(coordinator.concurrent_connections)
                 await asyncio.gather(*[
                     delete_connection(conn["id"]) for conn in filtered_connections
                 ])
@@ -297,6 +323,40 @@ class ClashServicesSetup:
         service_response = {"rules": filtered_rules}
 
         return service_response
+
+    async def async_api_call_service(self, service_call: ServiceCall) -> None:
+        """Execute service call for calling API."""
+
+        coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
+
+        def to_dict(input_str: str):
+            try:
+                data = json.loads(input_str)
+                if isinstance(data, dict):
+                    return data
+                else:
+                    return {}
+            except json.JSONDecodeError:
+                return {}
+
+        method = service_call.data.get(API_METHOD, "GET")
+        endpoint = service_call.data.get(API_ENDPOINT, "")
+        read_line = service_call.data.get(API_READ_LINE, 0)
+        params = to_dict(service_call.data.get(API_PARAMS, "") or "")
+        data = to_dict(service_call.data.get(API_DATA, "") or "")
         
+        try:
+            response = await coordinator.api.async_request(
+                method=method,
+                endpoint=endpoint,
+                params=params,
+                json_data=data,
+                read_line=read_line,
+                suppress_errors=False
+            )
+        except Exception as err:
+            raise HomeAssistantError(f"Error performing API call: {err}") from err
+        
+        return {"response": response}
 
 

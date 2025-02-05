@@ -28,7 +28,9 @@
                 "description": "修改此条目的选项。",
                 "title": "Clash 控制器选项",
                 "data": {
-                    "scan_interval": "扫描间隔（秒）"
+                    "scan_interval": "扫描间隔（秒）",
+                    "concurrent_connections": "并发连接数",
+                    "bearer_token": "更新令牌（留空则跳过）"
                 }
             }
         }
@@ -135,6 +137,36 @@
                     "description": "使用的代理方式"
                 }
             }
-        }
+        },
+        "api_call_service": {
+            "name": "API 调用",
+            "description": "执行对 Clash 的通用 API 调用，并可选择性地获取响应。",
+            "fields": {
+                "device_id": {
+                    "name": "实例",
+                    "description": "选择目标实例"
+                },
+                "api_endpoint": {
+                    "name": "接口",
+                    "description": "要使用的 API 接口"
+                },
+                "api_method": {
+                    "name": "请求方法",
+                    "description": "HTTP 请求方法（GET、POST 等）"
+                },
+                "api_params": {
+                    "name": "请求参数",
+                    "description": "请求的查询参数，必须是有效的 JSON 字符串"
+                },
+                "api_data": {
+                    "name": "载荷",
+                    "description": "请求发送的 JSON 载荷，必须是有效的 JSON 字符串"
+                },
+                "read_line": {
+                    "name": "读取行",
+                    "description": "指示在分块响应中读取第 N 行"
+                }
+            }
+        }        
     }
 }

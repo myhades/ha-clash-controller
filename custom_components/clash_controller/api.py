@@ -59,6 +59,7 @@ class ClashAPI:
         """
         General method for making requests.
         """
+
         if self._session is None:
             await self._establish_session()
             
@@ -110,6 +111,7 @@ class ClashAPI:
         """
         General async request method.
         """
+
         try:
             response = await self._request(method, endpoint, params=params, json_data=json_data, read_line=read_line)
         except Exception:
@@ -122,6 +124,7 @@ class ClashAPI:
         """
         Check if the API connection is successful by sending a simple request.
         """
+
         try:
             response = await self._request("GET", "version")
             if ("version" not in response) and (not suppress_errors):
@@ -138,6 +141,7 @@ class ClashAPI:
         """
         Get the version string.
         """
+
         response = await self.async_request("GET", "version")
         return {
             "meta": "Meta Core" if response and response.get("meta") is True else "Non-Meta Core",
@@ -148,6 +152,7 @@ class ClashAPI:
         """
         Get all data needed to update the entities.
         """
+        
         payload_keys = ["memory", "traffic", "connections", "group"]
         endpoints = [
             ("memory", {"read_line": 2}),
