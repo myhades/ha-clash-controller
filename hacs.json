@@ -1,5 +1,5 @@
 {
-    "name": "Class Controller",
-    "homeassistant": "2023.4.3",
-    "render_readme": true
-  }
+  "name": "Clash Controller",
+  "homeassistant": "2023.4.3",
+  "render_readme": true
+}
