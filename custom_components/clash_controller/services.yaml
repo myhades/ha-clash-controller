@@ -130,12 +130,12 @@ api_call_service:
         text:
     api_params:
       example: "{\"name\": \"Fast-01\"}"
-      required: true
+      required: false
       selector:
         text:
     api_data:
       example: "{\"data\": \"Some raw data\"}"
-      required: true
+      required: false
       selector:
         text:
     read_line:

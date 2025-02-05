@@ -60,6 +60,17 @@ class ClashAPI:
         General method for making requests.
         """
 
+        async def handle_response_format(response, read_line: int):
+            line_counter = 0
+            if response.status == 204:
+                return None
+            if read_line < 1:
+                return await response.json()
+            async for line in response.content:
+                line_counter += 1
+                if line_counter == read_line:
+                    return json.loads(line.decode('utf-8').strip())
+
         if self._session is None:
             await self._establish_session()
             
@@ -74,17 +85,8 @@ class ClashAPI:
         try:
             async with self._session.request(method, url, params=params, json=json_data, headers=headers) as response:
                 response.raise_for_status()
-                if response.status == 204:
-                    return None
                 try:
-                    if read_line > 0:
-                        line_counter = 0
-                        async for line in response.content:
-                            line_counter += 1
-                            if line_counter == read_line:
-                                return json.loads(line.decode('utf-8').strip())
-                    else:
-                        return await response.json()
+                    return await handle_response_format(response, read_line=read_line)
                 except (json.JSONDecodeError, UnicodeDecodeError) as err:
                     raise APIClientError(f"Error parsing JSON: {err}") from err
                 except Exception as err:
