@@ -13,7 +13,8 @@ This integration is my very first Python / Home Assistant project, and I’m sti
 
 ## Supported Version
 
-This integration should work with most of the Clash cores since they share the same RESTful API. This includes vanilla, premium and meta cores, etc.
+This integration is known to work with meta cores, and it should work with most of the Clash cores since they share the same RESTful API. This includes vanilla, premium and etc.
+If you experience any issues with your core selection, please let me know. 
 
 > [!IMPORTANT]
 > Make sure external controller option is enabled.
@@ -60,11 +61,22 @@ Note the following:
 - [x] Reboot core
 
 3. Additional Functions
-- [ ] Streaming service availability detection
+- [x] Streaming service availability detection (Netflix, for now)
 - [ ] Automatic proxy node selection for streaming
 
 ## Known Issue
 If you're connecting to a Clash behind Nginx or other reverse proxy, it is possible some real-time sensors are not working and showing "unknown" instead. I'm still working on this.
+
+## Feedback
+To open a issue, please provide some details about your Clash configuration alongside debug logs of this integration.
+You can enable debug logging in the UI (if possible), or you can add the following to your Home Assistant configruation:
+```
+logger:
+  default: warning
+  logs:
+    custom_components.clash_controller: debug
+    custom_components.clash_controller.sensor: debug
+```
 
 ## Disclaimer
 
