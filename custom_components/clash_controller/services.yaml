@@ -135,7 +135,7 @@ api_call_service:
         text:
     api_data:
       example: "{\"data\": \"Some raw data\"}"
-      false: true
+      required: true
       selector:
         text:
     read_line:
