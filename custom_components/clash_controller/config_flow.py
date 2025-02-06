@@ -117,25 +117,26 @@ class ClashControllerOptionsFlow(OptionsFlow):
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
         self.options = dict(config_entry.options)
 
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
 
+        config_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+
         if user_input is not None:
 
-            options = dict(self.config_entry.options)
+            options = dict(config_entry.options)
             options[CONF_SCAN_INTERVAL] = user_input[CONF_SCAN_INTERVAL]
             options[CONF_CONCURRENT_CONNECTIONS] = user_input[CONF_CONCURRENT_CONNECTIONS]
             options[CONF_STREAMING_DETECTION] = user_input[CONF_STREAMING_DETECTION]
 
             if user_input.get(CONF_BEAR_TOKEN):
-                data = dict(self.config_entry.data)
+                data = dict(config_entry.data)
                 data[CONF_BEAR_TOKEN] = user_input[CONF_BEAR_TOKEN]
-                self.hass.config_entries.async_update_entry(self.config_entry, data=data)
+                self.hass.config_entries.async_update_entry(config_entry, data=data)
 
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            await self.hass.config_entries.async_reload(config_entry.entry_id)
             return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
