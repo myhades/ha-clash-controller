@@ -65,11 +65,11 @@ Note the following:
 - [ ] Automatic proxy node selection for streaming
 
 ## Known Issue
-If you're connecting to a Clash behind Nginx or other reverse proxy, it is possible some real-time sensors are not working and showing "unknown" instead. I'm still working on this.
+If you're connecting to a Clash behind Nginx or other reverse proxy, some real-time sensors will not work and get "unknown" instead. I'm still working on this.
 
 ## Feedback
-To open a issue, please provide some details about your Clash configuration alongside debug logs of this integration.
-You can enable debug logging in the UI (if possible), or you can add the following to your Home Assistant configruation:
+To report an issue, please include details about your Clash configuration along with debug logs for this integration.
+You can enable debug logging in the UI (if possible) or add the following to your Home Assistant configuration:
 ```
 logger:
   default: warning
