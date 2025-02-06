@@ -25,7 +25,6 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
 ]
 
-
 @dataclass
 class RuntimeData:
     """Class to hold integration data."""
@@ -49,14 +48,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data[DOMAIN][config_entry.entry_id] = RuntimeData(
         coordinator, cancel_update_listener
     )
-
-    for platform in PLATFORMS:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setups(config_entry, platform)
-        )
-
+    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     ClashServicesSetup(hass, config_entry)
-
     return True
 
 
