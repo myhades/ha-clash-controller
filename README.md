@@ -44,6 +44,8 @@ Note the following:
 
 ## Usage
 
+Availability of entities and services vary across cores.
+
 1. Entities
 - [x] Proxy group sensor (all, current latency attributes)
 - [x] Proxy gorup selector (all, current latency attributes)
