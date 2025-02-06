@@ -116,6 +116,20 @@ class ClashAPI:
         except Exception as err:
             raise APIClientError(f"API request generic failure: {err}") from err
 
+    async def close_session(self):
+        """
+        Safely close the session.
+        """
+
+        if self._session is not None:
+            try:
+                await self._session.close()
+                _LOGGER.debug("Session closed successfully.")
+            except Exception as err:
+                _LOGGER.warning(f"Failed to close session: {err}")
+            finally:
+                self._session = None
+
     async def async_request(
         self,
         method: str,

@@ -79,6 +79,9 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     for service in hass.services.async_services_for_domain(DOMAIN):
         hass.services.async_remove(DOMAIN, service)
     hass.data[DOMAIN][config_entry.entry_id].cancel_update_listener()
+    coordinator = hass.data[DOMAIN][config_entry.entry_id].get("coordinator")
+    if coordinator:
+        coordinator.api.close_session()
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS
     )

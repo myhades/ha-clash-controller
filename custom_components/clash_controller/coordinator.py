@@ -6,12 +6,13 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL
-from homeassistant.core import DOMAIN, HomeAssistant
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ClashAPI, SERVICE_TABLE
 from .const import (
+    DOMAIN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_CONCURRENT_CONNECTIONS,
     DEFAULT_STREAMING_DETECTION,
@@ -47,7 +48,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
-            name=f"{DOMAIN} ({config_entry.unique_id})",
+            name=f"{DOMAIN} ({self.host})",
             update_method=self._async_update_data,
             update_interval=timedelta(seconds=self.poll_interval),
         )

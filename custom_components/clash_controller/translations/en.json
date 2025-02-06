@@ -38,9 +38,45 @@
       }
     },
     "entity": {
+        "select":{
+          "flush_cache": {
+            "name": "Flush FakeIP Cache"
+          }
+        },
         "sensor": {
-          "thermostat_mode": {
-            "name": "Thermostat mode"
+          "up_speed": {
+            "name": "Upload Speed"
+          },
+          "down_speed": {
+            "name": "Download Speed"
+          },
+          "up_traffic": {
+            "name": "Upload Traffic"
+          },
+          "down_traffic": {
+            "name": "Download Traffic"
+          },
+          "memory_used": {
+            "name": "Memory Used"
+          },
+          "connection_sensor": {
+            "name": "Connection Number"
+          },
+          "netflix_service": {
+            "name": "Netflix",
+            "state":{
+                "unlocked": "Unlocked",
+                "blocked": "Blocked",
+                "original_only": "Original Only"
+            },
+            "state_attributes":{
+                "latency": {
+                    "name": "Latency"
+                },
+                "status_code": {
+                    "name": "Status Code"
+                }
+            }
           }
         }
     },
