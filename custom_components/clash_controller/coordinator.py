@@ -89,7 +89,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         traffic = response.get("traffic", {})
         connections = response.get("connections", {})
         memory = response.get("memory", {})
-        group = response.get("group", {})
+        proxies = response.get("proxies", {})
         streaming = response.get("streaming", {})
 
         entity_data = [
@@ -149,7 +149,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         group_selector_items = ["tfo", "type", "udp", "xudp", "alive", "history"]
         group_sensor_items = group_selector_items + ["all"]
 
-        for item in group.get("proxies", []):
+        for item in proxies.get("proxies", {}).values():
             if item.get("type") in ["Selector", "Fallback"]:
                 entity_data.append({
                     "name": item.get("name"),

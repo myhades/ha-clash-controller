@@ -202,7 +202,7 @@ class ClashAPI:
             ("memory", {"read_line": 2}),
             ("traffic", {"read_line": 1}),
             ("connections", {}),
-            ("group", {})
+            ("proxies", {})
         ]
         results = await asyncio.gather(*[
             self.async_request("GET", endpoint, **params)
