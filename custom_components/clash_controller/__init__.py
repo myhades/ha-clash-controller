@@ -52,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     for platform in PLATFORMS:
         hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(config_entry, platform)
+            hass.config_entries.async_forward_entry_setups(config_entry, platform)
         )
 
     ClashServicesSetup(hass, config_entry)
@@ -79,9 +79,9 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     for service in hass.services.async_services_for_domain(DOMAIN):
         hass.services.async_remove(DOMAIN, service)
     hass.data[DOMAIN][config_entry.entry_id].cancel_update_listener()
-    coordinator = hass.data[DOMAIN][config_entry.entry_id].get("coordinator")
+    coordinator = hass.data[DOMAIN][config_entry.entry_id].coordinator
     if coordinator:
-        coordinator.api.close_session()
+        await coordinator.api.close_session()
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS
     )
