@@ -117,12 +117,13 @@ class ClashControllerOptionsFlow(OptionsFlow):
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize options flow."""
+        self.entry_id = config_entry.entry_id
         self.options = dict(config_entry.options)
-
+        
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
 
-        config_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        config_entry = self.hass.config_entries.async_get_entry(self.entry_id)
 
         if user_input is not None:
 
