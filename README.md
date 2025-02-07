@@ -25,9 +25,9 @@ Through HACS (not added to default repo, yet)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=myhades&repository=ha-clash-controller&category=integration)
 
-Or manually download the files and add to custom_components folder of your Home Assistant installation.
+Or manually download the repo and copy the folder `custom_components/clash_controller` to your Home Assistant installation.
 
-After either, reboot your instance.
+After installation, reboot your Home Assistant.
 
 ## Configuration
 
@@ -60,28 +60,146 @@ Note that availability of entities and services vary across cores.
 
 ### 2. Services
 
-| Service Name             | Parameter         | Required | Description |
-|--------------------------|------------------|----------|-------------|
-| **Reboot Clash Core**    | `device_id`      | Yes   | Select the target instance to reboot the Clash core. |
-| **Filter Connection**    | `device_id`      | Yes   | Select the target instance. |
-|                          | `close_connection` | No  | If enabled, retrieved connections will also be closed. |
-|                          | `host`           | No   | Filter connections by host. |
-|                          | `src_hostname`   | No   | Filter connections by source hostname. |
-|                          | `des_hostname`   | No   | Filter connections by destination hostname. |
-| **Get Latency**          | `device_id`      | Yes   | Select the target instance. |
-|                          | `group`          | No   | Proxy group name. Testing a group will also clear its fixed option if set. |
-|                          | `node`           | No   | Proxy node name. |
-|                          | `url`            | No   | The URL used to test the latency. |
-|                          | `timeout`        | No   | Connection timeout in milliseconds. |
-| **DNS Query**            | `device_id`      | Yes   | Select the target instance. |
-|                          | `domain_name`    | Yes   | The domain name to query. |
-|                          | `record_type`    | No   | The record type to query. Leave empty to get IPv4 (A) record. |
-| **API Call**             | `device_id`      | Yes   | Select the target instance. |
-|                          | `api_endpoint`   | Yes   | The API endpoint to be used. |
-|                          | `api_method`     | Yes   | The HTTP method (GET, POST, etc.). |
-|                          | `api_params`     | No   | The query parameters for the request (valid JSON string). |
-|                          | `api_data`       | No   | The JSON body sent in the request (valid JSON string). |
-|                          | `read_line`      | No   | Indicates to read the n-th line for a chunked response. |
+<table>
+  <tr>
+    <th>Service Name</th>
+    <th>Parameter</th>
+    <th>Required</th>
+    <th>Description</th>
+  </tr>
+  
+  <tr>
+    <td align="center"><b>Reboot Clash Core</b></td>
+    <td><code>device_id</code></td>
+    <td>✅ Yes</td>
+    <td>Select the target instance to reboot the Clash core.</td>
+  </tr>
+  <tr>
+    <td rowspan="5" align="center"><b>Filter Connection</b></td>
+    <td><code>device_id</code></td>
+    <td>✅ Yes</td>
+    <td>Select the target instance.</td>
+  </tr>
+  <tr>
+    <td><code>close_connection</code></td>
+    <td>❌ No</td>
+    <td>If enabled, retrieved connections will also be closed.</td>
+  </tr>
+  <tr>
+    <td><code>host</code></td>
+    <td>❌ No</td>
+    <td>Filter connections by host.</td>
+  </tr>
+  <tr>
+    <td><code>src_hostname</code></td>
+    <td>❌ No</td>
+    <td>Filter connections by source hostname.</td>
+  </tr>
+  <tr>
+    <td><code>des_hostname</code></td>
+    <td>❌ No</td>
+    <td>Filter connections by destination hostname.</td>
+  </tr>
+
+  <tr>
+    <td rowspan="5" align="center"><b>Get Latency</b></td>
+    <td><code>device_id</code></td>
+    <td>✅ Yes</td>
+    <td>Select the target instance.</td>
+  </tr>
+  <tr>
+    <td><code>group</code></td>
+    <td>❌ No</td>
+    <td>Proxy group name. Testing a group will also clear its fixed option if set.</td>
+  </tr>
+  <tr>
+    <td><code>node</code></td>
+    <td>❌ No</td>
+    <td>Proxy node name.</td>
+  </tr>
+  <tr>
+    <td><code>url</code></td>
+    <td>❌ No</td>
+    <td>The URL used to test the latency.</td>
+  </tr>
+  <tr>
+    <td><code>timeout</code></td>
+    <td>❌ No</td>
+    <td>Connection timeout in milliseconds.</td>
+  </tr>
+
+  <tr>
+    <td rowspan="3" align="center"><b>DNS Query</b></td>
+    <td><code>device_id</code></td>
+    <td>✅ Yes</td>
+    <td>Select the target instance.</td>
+  </tr>
+  <tr>
+    <td><code>domain_name</code></td>
+    <td>✅ Yes</td>
+    <td>The domain name to query.</td>
+  </tr>
+  <tr>
+    <td><code>record_type</code></td>
+    <td>❌ No</td>
+    <td>The record type to query. Leave empty to get IPv4 (A) record.</td>
+  </tr>
+
+  <tr>
+    <td rowspan="4" align="center"><b>Get Rule</b></td>
+    <td><code>device_id</code></td>
+    <td>✅ Yes</td>
+    <td>Select the target instance.</td>
+  </tr>
+  <tr>
+    <td><code>rule_type</code></td>
+    <td>❌ No</td>
+    <td>The type of the rule.</td>
+  </tr>
+  <tr>
+    <td><code>rule_payload</code></td>
+    <td>❌ No</td>
+    <td>The payload to match.</td>
+  </tr>
+  <tr>
+    <td><code>rule_proxy</code></td>
+    <td>❌ No</td>
+    <td>The proxy method used.</td>
+  </tr>
+
+  <tr>
+    <td rowspan="6" align="center"><b>API Call</b></td>
+    <td><code>device_id</code></td>
+    <td>✅ Yes</td>
+    <td>Select the target instance.</td>
+  </tr>
+  <tr>
+    <td><code>api_endpoint</code></td>
+    <td>✅ Yes</td>
+    <td>The API endpoint to be used.</td>
+  </tr>
+  <tr>
+    <td><code>api_method</code></td>
+    <td>✅ Yes</td>
+    <td>The HTTP method (GET, POST, etc.).</td>
+  </tr>
+  <tr>
+    <td><code>api_params</code></td>
+    <td>❌ No</td>
+    <td>The query parameters for the request. Needs to be a valid JSON string.</td>
+  </tr>
+  <tr>
+    <td><code>api_data</code></td>
+    <td>❌ No</td>
+    <td>The JSON body sent in the request. Needs to be a valid JSON string.</td>
+  </tr>
+  <tr>
+    <td><code>read_line</code></td>
+    <td>❌ No</td>
+    <td>Indicates to read the n-th line for a chunked response.</td>
+  </tr>
+</table>
+
 
 Example call: To get all proxies available:
 ```
