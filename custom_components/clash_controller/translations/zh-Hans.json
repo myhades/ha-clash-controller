@@ -10,7 +10,7 @@
                     "use_ssl": "使用 HTTPS",
                     "allow_unsafe": "允许不安全的 SSL 证书"
                 },
-                "description": "请输入您的 Clash 实例的 API 地址和令牌。例如：192.168.1.1:9090，clash.mydomain.com。如果地址是 IP，请确保是静态地址。"
+                "description": "请输入您的 Clash 实例的 API 地址和令牌。例如：192.168.1.1:9090，clash.mydomain.com。如果地址是 IP，请确保其为静态地址。"
             }
         },        
         "error": {

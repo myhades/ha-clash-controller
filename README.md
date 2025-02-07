@@ -17,7 +17,7 @@ This integration is known to work with meta cores, and it should work with most 
 If you experience any issues with your core selection, please let me know. 
 
 > [!IMPORTANT]
-> Make sure external controller option is enabled.
+> Make sure external controller option is enabled with a token set.
 
 ## Installation
 
@@ -31,11 +31,13 @@ After either, reboot your instance.
 
 ## Configuration
 
-Add the integration by searching "Clash Controller" and follow the config flow. If you can't find it in the list, make sure you've successfully installed the integration and rebooted. Then, clear the browser cache.
+Before proceeding, you'll need to prepare the endpoint location and the bearer token. Having a token set is required to use this integration.
+
+To add the integration, use the My button below or navigate to "Settings" -> "Devices & services" -> "Add integration" -> "Clash Controller". Then, follow the config flow. 
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=clash_controller)
 
-You'll need to provide the endpoint location and the bearer token. Having a token set is required to use this integration.
+If you can't find it in the list, make sure you've successfully installed the integration and rebooted. If so, try clearing the browser cache.
 
 Note the following:
 1. If your endpoint is an IP address, make sure it's static or assign a static DHCP lease for it. Endpoint location changes will require you to re-add the integration.
@@ -44,27 +46,60 @@ Note the following:
 
 ## Usage
 
-Availability of entities and services vary across cores.
+Note that availability of entities and services vary across cores.
 
-1. Entities
-- [x] Proxy group sensor (all, current latency attributes)
-- [x] Proxy gorup selector (all, current latency attributes)
-- [x] Traffic sensor (up/down)
-- [x] Total traffic sensor (up/down)
-- [x] Connection number sensor
-- [x] Memory info sensor
-- [x] Flush FakeIP cache button
+### 1. Entities
 
-2. Services
-- [x] Node/Group latency
-- [x] Get/Close connection (with filters)
-- [x] Get rules (with filters)
-- [x] DNS query
-- [x] Reboot core
+- Proxy group sensor (all, current latency attributes)
+- Proxy gorup selector (all, current latency attributes)
+- Traffic sensor (up/down)
+- Total traffic sensor (up/down)
+- Connection number sensor
+- Memory info sensor
+- Flush FakeIP cache button
 
-3. Additional Functions
-- [x] Streaming service availability detection (Netflix, for now)
-- [ ] Automatic proxy node selection for streaming
+### 2. Services
+
+| Service Name             | Parameter         | Required | Description |
+|--------------------------|------------------|----------|-------------|
+| **Reboot Clash Core**    | `device_id`      | Yes   | Select the target instance to reboot the Clash core. |
+| **Filter Connection**    | `device_id`      | Yes   | Select the target instance. |
+|                          | `close_connection` | No  | If enabled, retrieved connections will also be closed. |
+|                          | `host`           | No   | Filter connections by host. |
+|                          | `src_hostname`   | No   | Filter connections by source hostname. |
+|                          | `des_hostname`   | No   | Filter connections by destination hostname. |
+| **Get Latency**          | `device_id`      | Yes   | Select the target instance. |
+|                          | `group`          | No   | Proxy group name. Testing a group will also clear its fixed option if set. |
+|                          | `node`           | No   | Proxy node name. |
+|                          | `url`            | No   | The URL used to test the latency. |
+|                          | `timeout`        | No   | Connection timeout in milliseconds. |
+| **DNS Query**            | `device_id`      | Yes   | Select the target instance. |
+|                          | `domain_name`    | Yes   | The domain name to query. |
+|                          | `record_type`    | No   | The record type to query. Leave empty to get IPv4 (A) record. |
+| **API Call**             | `device_id`      | Yes   | Select the target instance. |
+|                          | `api_endpoint`   | Yes   | The API endpoint to be used. |
+|                          | `api_method`     | Yes   | The HTTP method (GET, POST, etc.). |
+|                          | `api_params`     | No   | The query parameters for the request (valid JSON string). |
+|                          | `api_data`       | No   | The JSON body sent in the request (valid JSON string). |
+|                          | `read_line`      | No   | Indicates to read the n-th line for a chunked response. |
+
+Example call: To get all proxies available:
+```
+action: clash_controller.api_call_service
+data:
+  api_endpoint: proxies
+  api_method: GET
+  device_id: [YOUR_DEVICE_ID]
+response_variable: proxy_data
+```
+
+
+### 3. Additional Functions
+This integration provides basic streaming service availability detection.
+For this to work, Home Assistant must connect through the same proxy being tested, and this feature is off by default.
+To enable/disable this feature, navigate to "Devices & services" -> "Clash Controller" -> "Options".
+
+Currently supported service(s): Netflix.
 
 ## Known Issue
 If you're connecting to a Clash behind Nginx or other reverse proxy, some real-time sensors will not work and get "unknown" instead. I'm still working on this.
