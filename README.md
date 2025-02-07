@@ -9,23 +9,39 @@ A Home Assistant integration for controlling an external Clash instance through 
 
 This is not an implementation of Clash, but an external controller in the form of a Home Asssistant integration to assist automated network control with ease. 
 
-This integration is my very first Python / Home Assistant project, and I’m still learning. Please expect some instability and rough edges. Feedback and contributions are greatly appreciated!
+This integration is my very first Python / Home Assistant project, and I’m still learning. Please expect some instability and rough edges. Feedback and contributions are greatly appreciated. If you find this project useful, consider giving it a ⭐star to show your support!
 
 ## Supported Version
 
-This integration is known to work with meta cores, and it should work with most of the Clash cores since they share the same RESTful API. This includes vanilla, premium and etc.
-If you experience any issues with your core selection, please let me know. 
+This integration should work with most of the Clash clients. 
+Known working: OpenClash, ShellClash and MerlinClash.
+
+Core support:
+
+| Core Name       | Supported |
+|-----------------|-----------|
+| Clash           | Partially |
+| Clash Premium   | Partially |
+| Clash Meta      | Yes       |
 
 > [!IMPORTANT]
 > Make sure external controller option is enabled with a token set.
 
 ## Installation
 
-Through HACS (not added to default repo, yet)
+Requires Home Assistant core version newer than `2024.4.3`
+
+### Method 1: Through HACS (not default yet)
+
+To add this repository, use the My button below or navigate to "HACS"  > "Overflow Menu"  > "Custom repositories", and add:
+- Repository: https://github.com/myhades/ha-clash-controller
+- Type: Integration
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=myhades&repository=ha-clash-controller&category=integration)
 
-Or manually download the repo and copy the folder `custom_components/clash_controller` to your Home Assistant installation.
+### Method 2: Manually
+
+Download the repo and copy the folder `custom_components/clash_controller` to your Home Assistant installation.
 
 After installation, reboot your Home Assistant.
 
@@ -33,20 +49,19 @@ After installation, reboot your Home Assistant.
 
 Before proceeding, you'll need to prepare the endpoint location and the bearer token. Having a token set is required to use this integration.
 
-To add the integration, use the My button below or navigate to "Settings" -> "Devices & services" -> "Add integration" -> "Clash Controller". Then, follow the config flow. 
+To add the integration, use the My button below or navigate to "Settings"  > "Devices & services"  > "Add integration"  > "Clash Controller". Then, follow the config flow. 
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=clash_controller)
 
-If you can't find it in the list, make sure you've successfully installed the integration and rebooted. If so, try clearing the browser cache.
-
-Note the following:
-1. If your endpoint is an IP address, make sure it's static or assign a static DHCP lease for it. Endpoint location changes will require you to re-add the integration.
-2. This integration supports both http and https endpoints. If you're using a self-signed certificate, check the "Allow Unsafe SSL Certificates" box.
+Notes:
+1. If you can't find it in the integration list, make sure you've successfully installed the integration and rebooted. If so, try clearing the browser cache.
+2. If your endpoint is an IP address, make sure it's static or assign a static DHCP lease for it. Endpoint location changes will require you to re-add the integration.
+3. This integration supports both http and https endpoints. If you're using a self-signed certificate, check the "Allow Unsafe SSL Certificates" box.
 (Not recommanded, since this option suppresses all warnings and could potentially leak your token, use it only for experimental purposes and/or in a secured network)
 
 ## Usage
 
-Note that availability of entities and services vary across cores.
+Availability of the following entities and services varies across cores.
 
 ### 1. Entities
 
@@ -201,13 +216,13 @@ Note that availability of entities and services vary across cores.
 </table>
 
 
-Example call: To get all proxies available:
+Example call of getting available proxies:
 ```
 action: clash_controller.api_call_service
 data:
+  device_id: [YOUR_DEVICE_ID]
   api_endpoint: proxies
   api_method: GET
-  device_id: [YOUR_DEVICE_ID]
 response_variable: proxy_data
 ```
 
@@ -215,7 +230,7 @@ response_variable: proxy_data
 ### 3. Additional Functions
 This integration provides basic streaming service availability detection.
 For this to work, Home Assistant must connect through the same proxy being tested, and this feature is off by default.
-To enable/disable this feature, navigate to "Devices & services" -> "Clash Controller" -> "Options".
+To enable/disable this feature, navigate to "Settings"  > "Devices & services"  > "Clash Controller"  > "Options".
 
 Currently supported service(s): Netflix.
 
