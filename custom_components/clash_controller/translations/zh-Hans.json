@@ -108,12 +108,12 @@
                     "description": "按主机筛选"
                 },
                 "src_hostname": {
-                    "name": "源主机名",
-                    "description": "按源主机名筛选"
+                    "name": "源 IP",
+                    "description": "按源 IP 筛选"
                 },
                 "des_hostname": {
-                    "name": "目标主机名",
-                    "description": "按目标主机名筛选"
+                    "name": "目标 IP",
+                    "description": "按目标 IP 筛选"
                 }
             }
         },

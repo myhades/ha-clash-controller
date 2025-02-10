@@ -108,12 +108,12 @@
                     "description": "Filter by host"
                 },
                 "src_hostname": {
-                    "name": "Source Hostname",
-                    "description": "Filter by source hostname"
+                    "name": "Source IP",
+                    "description": "Filter by source IP"
                 },
                 "des_hostname": {
-                    "name": "Destination Hostname",
-                    "description": "Filter by destination hostname"
+                    "name": "Destination IP",
+                    "description": "Filter by destination IP"
                 }
             }
         },
