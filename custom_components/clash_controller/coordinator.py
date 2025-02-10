@@ -153,7 +153,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
         for item in proxies.get("proxies", {}).values():
             if item.get("type") in ["Selector", "Fallback"]:
                 entity_data.append({
-                    "name": item.get("name"),
+                    "name": item.get("name") + " Status",
                     "state": item.get("now"),
                     "entity_type": "proxy_group_selector",
                     "icon": "mdi:network-outline",
@@ -187,7 +187,11 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
                 })
 
         for item in entity_data:
-            item["unique_id"] = f"{self.api.device_id}_{item['name'].lower().replace(' ', '_')}"
+            item["unique_id"] = (
+                f"{self.api.device_id}"
+                f"_{item['entity_type'].lower().replace(' ', '_')}"
+                f"_{item['name'].lower().replace(' ', '_')}"
+            )
 
         return entity_data
     

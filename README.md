@@ -43,11 +43,11 @@ This repository is not in the default list yet. To add it, use the My button bel
 
 ### Method 2: Manually
 
-Download the repo and copy the folder `custom_components/clash_controller` to your Home Assistant installation.
+Download the repo and copy the folder `custom_components/clash_controller` into your Home Assistant's `config/custom_components` directory.
 
 ## Configuration
 
-Before proceeding, you'll need to prepare the endpoint location and the bearer token. Having a token set is required to use this integration.
+Before proceeding, you'll need to prepare the API location and the bearer token. Having a token set is required to use this integration.
 
 To add the integration, use the My button below or navigate to "Settings"  > "Devices & services"  > "Add integration"  > "Clash Controller". Then, follow the config flow. 
 
@@ -55,9 +55,8 @@ To add the integration, use the My button below or navigate to "Settings"  > "De
 
 Notes:
 1. If you can't find it in the integration list, make sure you've successfully installed the integration and rebooted. If so, try clearing the browser cache.
-2. If your endpoint is an IP address, make sure it's static or assign a static DHCP lease for it. Endpoint location changes will require you to re-add the integration.
-3. This integration supports both http and https endpoints. If you're using a self-signed certificate, check the "Allow Unsafe SSL Certificates" box.
-(Not recommanded, since this option suppresses all warnings and could potentially leak your token, use it only for experimental purposes and/or in a secured network)
+2. If your API location is an IP address, make sure it's static or assign a static DHCP lease for it. Location changes will require you to re-add the integration.
+3. This integration supports http and https. If you're using a self-signed certificate, check the "Allow Unsafe SSL Certificates" box and use it only in a secured network.
 
 ## Usage
 
@@ -235,7 +234,7 @@ To enable/disable this feature, navigate to "Settings"  > "Devices & services"  
 Currently supported service(s): Netflix.
 
 ## Known Issue
-If you're connecting to a Clash behind Nginx or other reverse proxy, some real-time sensors will not work and get "unknown" state instead. I'm still working on this.
+If you're connecting to a Clash behind Nginx or other reverse proxy server, some real-time sensors will not work and get "unknown" state instead. I'm still working on this.
 
 ## Feedback
 To report an issue, please include details about your Clash configuration along with debug logs of this integration.
