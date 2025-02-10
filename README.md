@@ -29,11 +29,13 @@ Core support:
 
 ## Installation
 
-Requires Home Assistant core version newer than `2024.4.3`
+Home Assistant Core must be newer than version `2024.4.3`. 
 
-### Method 1: Through HACS (not default yet)
+Choose your preferred installation method, and reboot Home Assistant afterward.
 
-To add this repository, use the My button below or navigate to "HACS"  > "Overflow Menu"  > "Custom repositories", and add:
+### Method 1: Through HACS
+
+This repository is not in the default list yet. To add it, use the My button below or navigate to "HACS" > Overflow Menu > "Custom repositories", and fill in:
 - Repository: https://github.com/myhades/ha-clash-controller
 - Type: Integration
 
@@ -42,8 +44,6 @@ To add this repository, use the My button below or navigate to "HACS"  > "Overfl
 ### Method 2: Manually
 
 Download the repo and copy the folder `custom_components/clash_controller` to your Home Assistant installation.
-
-After installation, reboot your Home Assistant.
 
 ## Configuration
 
@@ -235,10 +235,10 @@ To enable/disable this feature, navigate to "Settings"  > "Devices & services"  
 Currently supported service(s): Netflix.
 
 ## Known Issue
-If you're connecting to a Clash behind Nginx or other reverse proxy, some real-time sensors will not work and get "unknown" instead. I'm still working on this.
+If you're connecting to a Clash behind Nginx or other reverse proxy, some real-time sensors will not work and get "unknown" state instead. I'm still working on this.
 
 ## Feedback
-To report an issue, please include details about your Clash configuration along with debug logs for this integration.
+To report an issue, please include details about your Clash configuration along with debug logs of this integration.
 You can enable debug logging in the UI (if possible) or add the following to your Home Assistant configuration:
 ```
 logger:
@@ -250,6 +250,6 @@ logger:
 
 ## Disclaimer
 
-This integration is solely for controlling Clash and is not responsible for any actions taken by users while using Clash. The user is fully responsible for ensuring that their use of Clash complies with all applicable laws and regulations. I make no warranties regarding the accuracy, legality, or appropriateness of Clash or its usage.
+This integration is solely for controlling Clash and is not responsible for any actions taken by users while using Clash. The user is fully responsible for ensuring that their use of Clash complies with all applicable laws and regulations.  Neither the owner nor the contributors to this repository make any warranties regarding the accuracy, legality, or appropriateness of Clash or its use.
 
 By using this integration, you acknowledge and agree to this disclaimer.

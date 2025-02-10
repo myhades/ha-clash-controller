@@ -16,7 +16,7 @@ filter_connection_service:
     close_connection:
       default: false
       example: false
-      required: true
+      required: false
       selector:
         boolean:
     host:
