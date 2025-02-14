@@ -51,7 +51,7 @@ class SensorEntityBase(BaseEntity, SensorEntity):
     @property
     def native_value(self) -> int | None:
         """Default state of the base sensor."""
-        value = self.entity_data.get("state", None)
+        value = self.entity_data.get("state")
         return int(value) if value is not None else None
 
 class TrafficSensor(SensorEntityBase):
@@ -102,8 +102,7 @@ class GroupSensor(SensorEntityBase):
     
     @property
     def native_value(self) -> int | None:
-        """Default state of the base sensor."""
-        return self.entity_data.get("state", None)
+        return self.entity_data.get("state")
 
 class StreamingSensor(SensorEntityBase):
     """Implementation of a streaming service detection sensor."""
@@ -111,9 +110,11 @@ class StreamingSensor(SensorEntityBase):
     def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
         super().__init__(coordinator, entity_data)
         self._attr_device_class = SensorDeviceClass.ENUM
-        self.options = self.entity_data.get("options", None)
+
+    @property
+    def options(self) -> dict | None:
+        return self.entity_data.get("options")
     
     @property
     def native_value(self) -> str | None:
-        """Default state of the base sensor."""
-        return self.entity_data.get("state", None)
+        return self.entity_data.get("state")

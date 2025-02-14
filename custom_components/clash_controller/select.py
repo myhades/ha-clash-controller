@@ -39,8 +39,14 @@ class SelectEntityBase(BaseEntity, SelectEntity):
 
     def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
         super().__init__(coordinator, entity_data)
-        self._attr_current_option = self.entity_data.get("state")
-        self._attr_options = self.entity_data.get("options")
+    
+    @property
+    def current_option(self) -> str | None:
+        return self.entity_data.get("state")
+
+    @property
+    def options(self) -> dict | None:
+        return self.entity_data.get("options")
 
 class GroupSelect(SelectEntityBase):
     """Implementation of a group select."""
