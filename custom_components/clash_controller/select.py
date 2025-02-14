@@ -62,5 +62,5 @@ class GroupSelect(SelectEntityBase):
             await self.coordinator.api.async_request("PUT", f"proxies/{group}", json_data={"name": node})
         except Exception as err:
             raise HomeAssistantError(f"Failed to set proxy group {group} to {node}.") from err
-        self._attr_current_option = option
+        self.entity_data["state"] = option
         self.async_write_ha_state()
