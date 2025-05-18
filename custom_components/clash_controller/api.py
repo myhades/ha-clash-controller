@@ -117,6 +117,8 @@ class ClashAPI:
                 raise APIClientError(f"API request got an invalid response: {err}") from err
         except asyncio.TimeoutError as err:
             raise APITimeoutError(f"API request timed out: {err}") from err
+        except aiohttp.ClientConnectionError as err:
+            raise APIConnectionError(f"API request connection error: {err}") from err
         except Exception as err:
             raise APIClientError(f"API request generic failure: {err}") from err
 
@@ -170,7 +172,7 @@ class ClashAPI:
         suppress_errors: bool = True,
     ) -> dict:
         """
-        General async request method, with retry and backoff.
+        General async request method, with retry and backoff for connectivity issues.
         """
         last_exc = None
 
@@ -183,11 +185,11 @@ class ClashAPI:
                     read_line=read_line,
                 )
                 return response or {}
-            except (asyncio.TimeoutError, aiohttp.ClientConnectionError) as err:
+            except (APITimeoutError, APIConnectionError) as err:
                 last_exc = err
                 _LOGGER.debug(
-                    "Request %s %s failed (%s) on attempt %d/%d",
-                    method, endpoint, type(err).__name__, attempt, self.MAX_RETRIES
+                    "Request %s %s failed timed out on attempt %d/%d",
+                    method, endpoint, attempt, self.MAX_RETRIES
                 )
                 if attempt < self.MAX_RETRIES:
                     backoff = self.BACKOFF_BASE * (2 ** (attempt - 1))
@@ -290,3 +292,6 @@ class APIClientError(Exception):
 
 class APITimeoutError(Exception):
     """Exception class for timeout error."""
+
+class APIConnectionError(Exception):
+    """Exception class for connection error."""
