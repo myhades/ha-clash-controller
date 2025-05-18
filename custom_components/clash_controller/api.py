@@ -4,6 +4,7 @@ from typing import Optional
 import asyncio
 import json
 import logging
+import random
 import re
 import ssl
 import time
@@ -28,6 +29,9 @@ SERVICE_TABLE = {
 
 class ClashAPI:
     """A utility class to interact with the Clash API."""
+
+    MAX_RETRIES = 3
+    BACKOFF_BASE = 1
 
     def __init__(self, host: str, token: str, allow_unsafe: bool = False):
         """
@@ -113,6 +117,8 @@ class ClashAPI:
                 raise APIClientError(f"API request got an invalid response: {err}") from err
         except asyncio.TimeoutError as err:
             raise APITimeoutError(f"API request timed out: {err}") from err
+        except aiohttp.ClientConnectionError as err:
+            raise APIConnectionError(f"API request connection error: {err}") from err
         except Exception as err:
             raise APIClientError(f"API request generic failure: {err}") from err
 
@@ -144,12 +150,59 @@ class ClashAPI:
         """
 
         try:
-            response = await self._request(method, endpoint, params=params, json_data=json_data, read_line=read_line)
+            response = await self._request(
+                    method, endpoint,
+                    params=params,
+                    json_data=json_data,
+                    read_line=read_line,
+                )
         except Exception:
             if suppress_errors:
                 return {}
             raise
         return response or {}
+    
+    async def async_retryable_request(
+        self,
+        method: str,
+        endpoint: str,
+        params: dict = None,
+        json_data: dict = None,
+        read_line: int = 0,
+        suppress_errors: bool = True,
+    ) -> dict:
+        """
+        General async request method, with retry and backoff for connectivity issues.
+        """
+        last_exc = None
+
+        for attempt in range(1, self.MAX_RETRIES + 1):
+            try:
+                response = await self._request(
+                    method, endpoint,
+                    params=params,
+                    json_data=json_data,
+                    read_line=read_line,
+                )
+                return response or {}
+            except (APITimeoutError, APIConnectionError) as err:
+                last_exc = err
+                _LOGGER.debug(
+                    "Request %s %s failed timed out on attempt %d/%d",
+                    method, endpoint, attempt, self.MAX_RETRIES
+                )
+                if attempt < self.MAX_RETRIES:
+                    backoff = self.BACKOFF_BASE * (2 ** (attempt - 1))
+                    jitter = random.uniform(0, backoff * 0.1)
+                    await asyncio.sleep(backoff + jitter)
+                else:
+                    break
+            except Exception as err:
+                last_exc = err
+                break
+        if suppress_errors:
+            return {}
+        raise last_exc
 
     async def connected(self, suppress_errors: bool = True) -> bool:
         """
@@ -219,7 +272,7 @@ class ClashAPI:
             ("proxies", {})
         ]
         results = await asyncio.gather(*[
-            self.async_request("GET", endpoint, **params)
+            self.async_retryable_request("GET", endpoint, **params)
             for endpoint, params in endpoints
         ], return_exceptions=True)
         data = dict(zip((e[0] for e in endpoints), results))
@@ -239,3 +292,6 @@ class APIClientError(Exception):
 
 class APITimeoutError(Exception):
     """Exception class for timeout error."""
+
+class APIConnectionError(Exception):
+    """Exception class for connection error."""
