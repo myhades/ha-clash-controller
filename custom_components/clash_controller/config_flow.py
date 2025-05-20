@@ -18,7 +18,7 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
-from .api import ClashAPI, APITimeoutError, APIAuthError, APIClientError
+from .api import ClashAPI, APITimeoutError, APIAuthError, APIClientError, APIConnectionError
 from .const import (
     DOMAIN,
     MIN_SCAN_INTERVAL,
@@ -65,7 +65,7 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             errors["base"] = "invalid_token"
         except APITimeoutError:
             errors["base"] = "timed_out"
-        except APIClientError:
+        except (APIClientError, APIConnectionError):
             errors["base"] = "cannot_connect"
         except Exception:
             errors["base"] = "unknown"
