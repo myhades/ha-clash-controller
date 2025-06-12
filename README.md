@@ -61,7 +61,7 @@ Availability of the following entities and services varies across cores.
 ### 1. Entities
 
 - Proxy group sensor (all, current latency attributes)
-- Proxy gorup selector (all, current latency attributes)
+- Proxy group selector (all, current latency attributes)
 - Traffic sensor (up/down)
 - Total traffic sensor (up/down)
 - Connection number sensor
