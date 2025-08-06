@@ -6,9 +6,9 @@
 
 ![Repo Logo](https://raw.githubusercontent.com/myhades/ha-clash-controller/refs/heads/main/assets/clash_controller_repo_logo.png)
 
-A Home Assistant integration for controlling an external Clash instance through RESTful API.
+A Home Assistant integration for controlling an external Clash (now [Mihomo](https://github.com/MetaCubeX/mihomo)) instance through RESTful API.
 
-This is not an implementation of Clash, but an external controller in the form of a Home Asssistant integration to assist automated network control with ease. 
+This is not a Clash implementation or client, but an external controller in the form of a Home Asssistant integration designed to streamline automated network control. 
 
 This integration is my very first Python / Home Assistant project, and I’m still learning. Please expect some instability and rough edges. Feedback and contributions are greatly appreciated. If you find this project useful, consider giving it a ⭐star to show your support!
 
