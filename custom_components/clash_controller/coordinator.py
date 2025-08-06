@@ -194,9 +194,15 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
             )
 
         return entity_data
-    
+
     def get_data_by_name(self, name: str) -> dict | None:
         """
         Retrieve data by name.
         """
         return next((item for item in self.data if item["name"] == name), None)
+
+    def get_data_by_unique_id(self, unique_id: str) -> dict | None:
+        """
+        Retrieve data by unique ID.
+        """
+        return next((item for item in self.data if item["unique_id"] == unique_id), None)
