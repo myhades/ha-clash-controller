@@ -20,9 +20,12 @@ class BaseEntity(CoordinatorEntity):
         super().__init__(coordinator)
         self.entity_data = entity_data
         self._attr_device_info = self.coordinator.device
+
+        self._entity_name = self.entity_data.get("name")
+        self._entity_unique_id = self.entity_data.get("unique_id")
         
-        self._attr_name = self.entity_data.get("name")
-        self._attr_unique_id = self.entity_data.get("unique_id")
+        self._attr_name = self._entity_name
+        self._attr_unique_id = self._entity_unique_id
         self._attr_icon = self.entity_data.get("icon")
         self._attr_available = True
 
