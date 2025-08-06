@@ -13,7 +13,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_SETUP_COMPLETE
 from .coordinator import ClashControllerCoordinator
 from .services import ClashServicesSetup
 
@@ -38,11 +38,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     hass.data.setdefault(DOMAIN, {})
     coordinator = ClashControllerCoordinator(hass, config_entry)
-    await coordinator.async_config_entry_first_refresh()
+    setup_done = config_entry.data.get(CONF_SETUP_COMPLETE, False)
 
-    if not await coordinator.api.connected():
-        _LOGGER.error("API not connected when setting up the entry.")
-        raise ConfigEntryNotReady
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except ConfigEntryNotReady as err:
+        if not setup_done:
+            raise err
+        _LOGGER.warning("API not connected, entities will be unavailable")
+        coordinator.data = coordinator.data or []
 
     cancel_update_listener = config_entry.add_update_listener(_async_update_listener)
     hass.data[DOMAIN][config_entry.entry_id] = RuntimeData(
@@ -50,6 +54,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     )
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     ClashServicesSetup(hass, config_entry)
+    if not setup_done:
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data={**config_entry.data, CONF_SETUP_COMPLETE: True},
+        )
     return True
 
 
