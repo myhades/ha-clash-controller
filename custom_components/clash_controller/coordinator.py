@@ -83,7 +83,13 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {err}") from err
         
         if is_connected:
-            response = await self.api.fetch_data(streaming_detection=self.streaming_detection)
+            try:
+                response = await self.api.fetch_data(
+                    streaming_detection=self.streaming_detection,
+                    suppress_errors=False,
+                )
+            except Exception as err:
+                raise UpdateFailed(f"Error fetching data: {err}") from err
             if not self.device:
                 self.device = await self._get_device()
 
