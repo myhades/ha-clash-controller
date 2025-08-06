@@ -253,28 +253,48 @@ class ClashAPI:
                 _LOGGER.error(f"Error getting status code for {url}: {err}")
                 return {"latency": -1, "status_code": 000}
 
-    async def fetch_data(self, streaming_detection: bool = False) -> dict:
+    async def fetch_data(self, streaming_detection: bool = False, suppress_errors: bool = True) -> dict:
         """
         Get all data needed to update the entities.
         """
 
         async def fetch_streaming_service_data():
-            results = await asyncio.gather(*[
-                self.get_url_status(details["url"])
-                for service, details in SERVICE_TABLE.items()
-            ], return_exceptions=True)
+            results = await asyncio.gather(
+                *[self.get_url_status(details["url"]) for service, details in SERVICE_TABLE.items()],
+                return_exceptions=True,
+            )
+            if not suppress_errors:
+                for result in results:
+                    if isinstance(result, Exception):
+                        raise result
+                    if not result:
+                        raise APIClientError("Missing streaming detection data")
             return dict(zip((s for s in SERVICE_TABLE), results))
         
         endpoints = [
             ("memory", {"read_line": 2}),
             ("traffic", {"read_line": 1}),
             ("connections", {}),
-            ("proxies", {})
+            ("proxies", {}),
         ]
-        results = await asyncio.gather(*[
-            self.async_retryable_request("GET", endpoint, **params)
-            for endpoint, params in endpoints
-        ], return_exceptions=True)
+        results = await asyncio.gather(
+            *[
+                self.async_retryable_request(
+                    "GET",
+                    endpoint,
+                    **params,
+                    suppress_errors=suppress_errors,
+                )
+                for endpoint, params in endpoints
+            ],
+            return_exceptions=True,
+        )
+        if not suppress_errors:
+            for (endpoint, _), result in zip(endpoints, results):
+                if isinstance(result, Exception):
+                    raise result
+                if not result:
+                    raise APIClientError(f"Missing data from {endpoint} endpoint")
         data = dict(zip((e[0] for e in endpoints), results))
 
         if streaming_detection:

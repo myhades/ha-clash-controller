@@ -20,16 +20,28 @@ class BaseEntity(CoordinatorEntity):
         super().__init__(coordinator)
         self.entity_data = entity_data
         self._attr_device_info = self.coordinator.device
+
+        self._entity_name = self.entity_data.get("name")
+        self._entity_unique_id = self.entity_data.get("unique_id")
         
-        self._attr_name = self.entity_data.get("name")
-        self._attr_unique_id = self.entity_data.get("unique_id")
+        self._attr_name = self._entity_name
+        self._attr_unique_id = self._entity_unique_id
         self._attr_icon = self.entity_data.get("icon")
+        self._attr_available = True
 
         _LOGGER.debug(f"Entity {self._attr_name} ({self._attr_unique_id}) initialized.")
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        self.entity_data = self.coordinator.get_data_by_name(self.entity_data.get("name")) or {}
+        new_data = (
+            self.coordinator.get_data_by_unique_id(self._entity_unique_id)
+            or self.coordinator.get_data_by_name(self._entity_name)
+        )
+        if new_data:
+            self.entity_data = new_data
+            self._attr_available = True
+        else:
+            self._attr_available = False
         self.async_write_ha_state()
     
     @property
