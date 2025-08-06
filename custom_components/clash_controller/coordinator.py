@@ -83,7 +83,13 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {err}") from err
         
         if is_connected:
-            response = await self.api.fetch_data(streaming_detection=self.streaming_detection)
+            try:
+                response = await self.api.fetch_data(
+                    streaming_detection=self.streaming_detection,
+                    suppress_errors=False,
+                )
+            except Exception as err:
+                raise UpdateFailed(f"Error fetching data: {err}") from err
             if not self.device:
                 self.device = await self._get_device()
 
@@ -194,9 +200,15 @@ class ClashControllerCoordinator(DataUpdateCoordinator):
             )
 
         return entity_data
-    
+
     def get_data_by_name(self, name: str) -> dict | None:
         """
         Retrieve data by name.
         """
         return next((item for item in self.data if item["name"] == name), None)
+
+    def get_data_by_unique_id(self, unique_id: str) -> dict | None:
+        """
+        Retrieve data by unique ID.
+        """
+        return next((item for item in self.data if item["unique_id"] == unique_id), None)
