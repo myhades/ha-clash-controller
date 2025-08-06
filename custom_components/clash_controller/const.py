@@ -2,6 +2,10 @@
 
 DOMAIN = "clash_controller"
 
+# Internal flags
+
+CONF_SETUP_COMPLETE = "setup_complete"
+
 # Configs
 
 CONF_API_URL = "api_url"
@@ -29,4 +33,3 @@ FILTER_CONNECTION_SERVICE_NAME = "filter_connection_service"
 GET_LATENCY_SERVICE_NAME = "get_latency_service"
 GET_RULE_SERVICE_NAME = "get_rule_service"
 REBOOT_CORE_SERVICE_NAME = "reboot_core_service"
-
