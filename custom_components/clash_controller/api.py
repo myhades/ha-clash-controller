@@ -131,10 +131,13 @@ class ClashAPI:
             else:
                 raise APIClientError(f"API request got an invalid response: {err}") from err
         except asyncio.TimeoutError as err:
+            await self.close_session()
             raise APITimeoutError(f"API request timed out: {err}") from err
         except aiohttp.ClientConnectionError as err:
+            await self.close_session()
             raise APIConnectionError(f"API request connection error: {err}") from err
         except Exception as err:
+            await self.close_session()
             raise APIClientError(f"API request generic failure: {err}") from err
 
     async def close_session(self):
