@@ -13,7 +13,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DOMAIN, CONF_SETUP_COMPLETE
+from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator
 from .services import ClashServicesSetup
 
@@ -31,34 +31,31 @@ class RuntimeData:
 
     coordinator: DataUpdateCoordinator
     cancel_update_listener: Callable
+    setup_done: bool = False
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up Clash Controller from a config entry."""
 
     hass.data.setdefault(DOMAIN, {})
+    runtime_data: RuntimeData | None = hass.data[DOMAIN].get(config_entry.entry_id)
+    setup_done = runtime_data.setup_done if runtime_data else False
     coordinator = ClashControllerCoordinator(hass, config_entry)
-    setup_done = config_entry.data.get(CONF_SETUP_COMPLETE, False)
 
     try:
         await coordinator.async_config_entry_first_refresh()
     except ConfigEntryNotReady as err:
         if not setup_done:
             raise err
-        _LOGGER.warning("API not connected, entities will be unavailable")
+        _LOGGER.warning(err)
         coordinator.data = coordinator.data or []
 
     cancel_update_listener = config_entry.add_update_listener(_async_update_listener)
     hass.data[DOMAIN][config_entry.entry_id] = RuntimeData(
-        coordinator, cancel_update_listener
+        coordinator, cancel_update_listener, True
     )
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     ClashServicesSetup(hass, config_entry)
-    if not setup_done:
-        hass.config_entries.async_update_entry(
-            config_entry,
-            data={**config_entry.data, CONF_SETUP_COMPLETE: True},
-        )
     return True
 
 
@@ -77,7 +74,7 @@ async def async_remove_config_entry_device(
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    
+
     for service in hass.services.async_services_for_domain(DOMAIN):
         hass.services.async_remove(DOMAIN, service)
     hass.data[DOMAIN][config_entry.entry_id].cancel_update_listener()

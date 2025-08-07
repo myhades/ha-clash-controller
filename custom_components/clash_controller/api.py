@@ -30,7 +30,7 @@ SERVICE_TABLE = {
 class ClashAPI:
     """A utility class to interact with the Clash API."""
 
-    MAX_RETRIES = 3
+    MAX_RETRIES = 2
     BACKOFF_BASE = 1
 
     def __init__(self, host: str, token: str, allow_unsafe: bool = False):
