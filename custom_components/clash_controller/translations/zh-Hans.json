@@ -35,6 +35,9 @@
                     "streaming_detection": "流媒体可用性检测"
                 }
             }
+        },        
+        "error": {
+            "invalid_token": "提供的 API 令牌无效，请检查后重试。"
         }
     },
     "entity": {

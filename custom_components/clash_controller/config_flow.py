@@ -18,24 +18,43 @@ from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 
-from .api import ClashAPI, APITimeoutError, APIAuthError, APIClientError, APIConnectionError
+from .api import (
+    APITimeoutError,
+    APIAuthError,
+    APIClientError,
+    APIConnectionError,
+    ClashAPI,
+)
 from .const import (
-    DOMAIN,
-    MIN_SCAN_INTERVAL,
-    DEFAULT_SCAN_INTERVAL,
-    MIN_CONCURRENT_CONNECTIONS,
-    DEFAULT_CONCURRENT_CONNECTIONS,
-    DEFAULT_STREAMING_DETECTION,
+    CONF_ALLOW_UNSAFE,
     CONF_API_URL,
     CONF_BEAR_TOKEN,
-    CONF_USE_SSL,
-    CONF_ALLOW_UNSAFE,
     CONF_CONCURRENT_CONNECTIONS,
     CONF_STREAMING_DETECTION,
+    CONF_USE_SSL,
+    DEFAULT_CONCURRENT_CONNECTIONS,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_STREAMING_DETECTION,
+    DOMAIN,
+    MIN_CONCURRENT_CONNECTIONS,
+    MIN_SCAN_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
+async def _test_connection(api: ClashAPI):
+    errors = {}
+    try:
+        await api.connected(suppress_errors=False)
+    except APIAuthError:
+        errors["base"] = "invalid_token"
+    except APITimeoutError:
+        errors["base"] = "timed_out"
+    except (APIClientError, APIConnectionError):
+        errors["base"] = "cannot_connect"
+    except Exception:
+        errors["base"] = "unknown"
+    return errors
 class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Clash Controller."""
 
@@ -57,20 +76,6 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
         return unique_id
 
-    async def _test_connection(self, api: ClashAPI):
-        errors = {}
-        try:
-            await api.connected(suppress_errors=False)
-        except APIAuthError:
-            errors["base"] = "invalid_token"
-        except APITimeoutError:
-            errors["base"] = "timed_out"
-        except (APIClientError, APIConnectionError):
-            errors["base"] = "cannot_connect"
-        except Exception:
-            errors["base"] = "unknown"
-        return errors
-
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial (and only) step."""
 
@@ -88,12 +93,16 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
             api_url = self._normalize_url(api_url, use_ssl)
             user_input[CONF_API_URL] = api_url
+            api = ClashAPI(api_url, token, allow_unsafe)
 
-            self._set_unique_id(api_url)
+            await self._set_unique_id(api_url)
 
-            errors = await self._test_connection(ClashAPI(api_url, token, allow_unsafe))
+            errors = await _test_connection(api)
             if "base" not in errors:
+                user_input["available_endpoints"] = await api.async_detect_available_endpoints()
+                await api.close_session()
                 return self.async_create_entry(title=api_url, data=user_input)
+            await api.close_session()
 
         return self.async_show_form(
             step_id="user",
@@ -103,7 +112,7 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_USE_SSL, default=use_ssl): cv.boolean,
                 vol.Optional(CONF_ALLOW_UNSAFE, default=allow_unsafe): cv.boolean,
             }),
-            errors=errors
+            errors=errors,
         )
 
     @staticmethod
@@ -123,22 +132,32 @@ class ClashControllerOptionsFlow(OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
 
+        errors = {}
         config_entry = self.hass.config_entries.async_get_entry(self.entry_id)
 
         if user_input is not None:
+            token = user_input.get(CONF_BEAR_TOKEN)
 
-            options = dict(config_entry.options)
-            options[CONF_SCAN_INTERVAL] = user_input[CONF_SCAN_INTERVAL]
-            options[CONF_CONCURRENT_CONNECTIONS] = user_input[CONF_CONCURRENT_CONNECTIONS]
-            options[CONF_STREAMING_DETECTION] = user_input[CONF_STREAMING_DETECTION]
+            if token:
+                api_url = config_entry.data[CONF_API_URL]
+                allow_unsafe = config_entry.data.get(CONF_ALLOW_UNSAFE, False)
+                api = ClashAPI(api_url, token, allow_unsafe)
+                errors = await _test_connection(api)
+                await api.close_session()
 
-            if user_input.get(CONF_BEAR_TOKEN):
-                data = dict(config_entry.data)
-                data[CONF_BEAR_TOKEN] = user_input[CONF_BEAR_TOKEN]
-                self.hass.config_entries.async_update_entry(config_entry, data=data)
+            if errors.get("base") != "invalid_token":
+                options = dict(config_entry.options)
+                options[CONF_SCAN_INTERVAL] = user_input[CONF_SCAN_INTERVAL]
+                options[CONF_CONCURRENT_CONNECTIONS] = user_input[CONF_CONCURRENT_CONNECTIONS]
+                options[CONF_STREAMING_DETECTION] = user_input[CONF_STREAMING_DETECTION]
 
-            await self.hass.config_entries.async_reload(config_entry.entry_id)
-            return self.async_create_entry(title="", data=options)
+                if token:
+                    data = dict(config_entry.data)
+                    data[CONF_BEAR_TOKEN] = token
+                    self.hass.config_entries.async_update_entry(config_entry, data=data)
+
+                await self.hass.config_entries.async_reload(config_entry.entry_id)
+                return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
             step_id="init",
@@ -159,5 +178,6 @@ class ClashControllerOptionsFlow(OptionsFlow):
                     CONF_STREAMING_DETECTION,
                     default=self.options.get(CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION)
                 ): cv.boolean,
-            })
+            }),
+            errors=errors,
         )

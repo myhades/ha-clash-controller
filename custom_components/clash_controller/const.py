@@ -2,10 +2,6 @@
 
 DOMAIN = "clash_controller"
 
-# Internal flags
-
-CONF_SETUP_COMPLETE = "setup_complete"
-
 # Configs
 
 CONF_API_URL = "api_url"

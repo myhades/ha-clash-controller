@@ -34,8 +34,11 @@
                     "bearer_token": "Update Bearer Token (Leave empty to skip)",
                     "streaming_detection": "Enable Streaming Service Availability Detection"
                 }
+            }
+        },        
+        "error": {
+            "invalid_token": "The provided API token is invalid. Please check and try again."
         }
-      }
     },
     "entity": {
         "select":{

@@ -1,6 +1,6 @@
 """API class for Clash Controller."""
 
-from typing import Optional
+from typing import Optional, List, Tuple
 import asyncio
 import json
 import logging
@@ -30,18 +30,33 @@ SERVICE_TABLE = {
 class ClashAPI:
     """A utility class to interact with the Clash API."""
 
-    MAX_RETRIES = 3
+    MAX_RETRIES = 2
     BACKOFF_BASE = 1
 
-    def __init__(self, host: str, token: str, allow_unsafe: bool = False):
+    def __init__(
+        self,
+        host: str,
+        token: str,
+        allow_unsafe: bool = False,
+        available_endpoints: Optional[List[Tuple[str, dict]]] = None,
+    ):
         """
         Initialize the ClashAPI instance.
         """
         self.host = host
         self.token = token
         self.allow_unsafe = allow_unsafe
-        self.device_id = re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_")) + "_device"
+        self.device_id = (
+            re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_"))
+            + "_device"
+        )
         self._session: Optional[aiohttp.ClientSession] = None
+        self._available_endpoints: Optional[List[Tuple[str, dict]]] = available_endpoints
+
+    @property
+    def available_endpoints(self) -> Optional[List[Tuple[str, dict]]]:
+        """Return currently available endpoints."""
+        return self._available_endpoints
     
     async def _establish_session(self):
         """
@@ -252,6 +267,44 @@ class ClashAPI:
             except Exception as err:
                 _LOGGER.error(f"Error getting status code for {url}: {err}")
                 return {"latency": -1, "status_code": 000}
+            
+    async def async_detect_available_endpoints(self) -> List[Tuple[str, dict]]:
+        """Probe API endpoints and cache those that respond successfully."""
+
+        endpoints: List[Tuple[str, dict]] = [
+            ("memory", {"read_line": 2}),
+            ("traffic", {"read_line": 1}),
+            ("connections", {}),
+            ("proxies", {}),
+        ]
+
+        results = await asyncio.gather(
+            *[
+                self.async_retryable_request(
+                    "GET",
+                    endpoint,
+                    **params,
+                    suppress_errors=True,
+                )
+                for endpoint, params in endpoints
+            ],
+            return_exceptions=True,
+        )
+
+        self._available_endpoints = [
+            (endpoint, params)
+            for (endpoint, params), result in zip(endpoints, results)
+            if result
+        ]
+
+        if self._available_endpoints:
+            endpoint_list = ", ".join(f"/{ep}" for ep, _ in self._available_endpoints)
+            _LOGGER.debug(
+                "The core at %s supports the following endpoints: %s",
+                self.host, endpoint_list,
+            )
+
+        return self._available_endpoints
 
     async def fetch_data(self, streaming_detection: bool = False, suppress_errors: bool = True) -> dict:
         """
@@ -271,12 +324,16 @@ class ClashAPI:
                         raise APIClientError("Missing streaming detection data")
             return dict(zip((s for s in SERVICE_TABLE), results))
         
-        endpoints = [
-            ("memory", {"read_line": 2}),
-            ("traffic", {"read_line": 1}),
-            ("connections", {}),
-            ("proxies", {}),
-        ]
+        if self._available_endpoints is None:
+            endpoints: List[Tuple[str, dict]] = [
+                ("memory", {"read_line": 2}),
+                ("traffic", {"read_line": 1}),
+                ("connections", {}),
+                ("proxies", {}),
+            ]
+        else:
+            endpoints = self._available_endpoints
+            
         results = await asyncio.gather(
             *[
                 self.async_retryable_request(
@@ -289,6 +346,14 @@ class ClashAPI:
             ],
             return_exceptions=True,
         )
+
+        if self._available_endpoints is None:
+            self._available_endpoints = [
+                (endpoint, params)
+                for (endpoint, params), result in zip(endpoints, results)
+                if result
+            ]
+
         if not suppress_errors:
             for (endpoint, _), result in zip(endpoints, results):
                 if isinstance(result, Exception):
