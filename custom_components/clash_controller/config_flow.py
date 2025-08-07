@@ -141,7 +141,9 @@ class ClashControllerOptionsFlow(OptionsFlow):
             if token:
                 api_url = config_entry.data[CONF_API_URL]
                 allow_unsafe = config_entry.data.get(CONF_ALLOW_UNSAFE, False)
-                errors = await _test_connection(ClashAPI(api_url, token, allow_unsafe))
+                api = ClashAPI(api_url, token, allow_unsafe)
+                errors = await _test_connection(api)
+                await api.close_session()
 
             if errors.get("base") != "invalid_token":
                 options = dict(config_entry.options)

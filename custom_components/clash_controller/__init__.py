@@ -42,6 +42,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     setup_done = runtime_data.setup_done if runtime_data else False
     coordinator = ClashControllerCoordinator(hass, config_entry)
 
+    if not config_entry.data.get("available_endpoints"):
+        try:
+            available_endpoints = await coordinator.api.async_detect_available_endpoints()
+            hass.config_entries.async_update_entry(
+                config_entry,
+                data={**config_entry.data, "available_endpoints": available_endpoints},
+            )
+        except Exception as err:
+            _LOGGER.debug(f"Failed to detect available endpoints: {err}")
+
+
     try:
         await coordinator.async_config_entry_first_refresh()
     except ConfigEntryNotReady as err:
