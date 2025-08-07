@@ -40,6 +40,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[EntityData]]):
         self.host = config_entry.data["api_url"]
         self.token = config_entry.data["bearer_token"]
         self.allow_unsafe = config_entry.data["allow_unsafe"]
+        self.config_entry = config_entry
 
         self.poll_interval = config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
@@ -59,7 +60,16 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[EntityData]]):
             update_interval=timedelta(seconds=self.poll_interval),
         )
 
-        self.api = ClashAPI(host=self.host, token=self.token, allow_unsafe=self.allow_unsafe)
+        stored_endpoints = self.config_entry.data.get("available_endpoints")
+        available_endpoints = (
+            [tuple(item) for item in stored_endpoints] if stored_endpoints else None
+        )
+        self.api = ClashAPI(
+            host=self.host,
+            token=self.token,
+            allow_unsafe=self.allow_unsafe,
+            available_endpoints=available_endpoints,
+        )
         _LOGGER.debug(f"Clash API initialized for coordinator {self.name}")
 
     async def _get_device(self) -> DeviceInfo:

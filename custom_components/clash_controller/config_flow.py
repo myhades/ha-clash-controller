@@ -93,12 +93,16 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
             api_url = self._normalize_url(api_url, use_ssl)
             user_input[CONF_API_URL] = api_url
+            api = ClashAPI(api_url, token, allow_unsafe)
 
-            self._set_unique_id(api_url)
+            await self._set_unique_id(api_url)
 
-            errors = await _test_connection(ClashAPI(api_url, token, allow_unsafe))
+            errors = await _test_connection(api)
             if "base" not in errors:
+                user_input["available_endpoints"] = await api.async_detect_available_endpoints()
+                await api.close_session()
                 return self.async_create_entry(title=api_url, data=user_input)
+            await api.close_session()
 
         return self.async_show_form(
             step_id="user",
