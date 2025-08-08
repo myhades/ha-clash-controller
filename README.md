@@ -4,7 +4,7 @@
 [![](https://img.shields.io/badge/maintainer-%40myhades-green)](https://github.com/myhades)
 [![](https://img.shields.io/github/v/release/myhades/ha-clash-controller)](https://github.com/myhades/ha-clash-controller/releases)
 
-![Repo Logo](https://raw.githubusercontent.com/myhades/ha-clash-controller/refs/heads/main/assets/clash_controller_repo_logo.png)
+![Repo Logo](https://raw.githubusercontent.com/myhades/ha-clash-controller/main/assets/clash_controller_repo_logo.png)
 
 A Home Assistant integration for controlling an external Clash (now [Mihomo](https://github.com/MetaCubeX/mihomo)) instance through RESTful API.
 
