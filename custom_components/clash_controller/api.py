@@ -51,6 +51,7 @@ class ClashAPI:
             + "_device"
         )
         self._session: Optional[aiohttp.ClientSession] = None
+        self._status_session: Optional[aiohttp.ClientSession] = None
         self._available_endpoints: Optional[List[Tuple[str, dict]]] = available_endpoints
 
     @property
@@ -81,6 +82,22 @@ class ClashAPI:
             if new_session:
                 await new_session.close()
             raise APIClientError(f"Error creating HTTP session: {err}") from err
+
+    async def _establish_status_session(self):
+        """
+        Establish a dedicated session for third-party URL probes.
+        """
+
+        new_session = None
+        try:
+            new_session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=10),
+            )
+            self._status_session = new_session
+        except Exception as err:
+            if new_session:
+                await new_session.close()
+            raise APIClientError(f"Error creating status probe session: {err}") from err
 
     async def _request(
         self,
@@ -153,6 +170,14 @@ class ClashAPI:
                 _LOGGER.warning(f"Failed to close session: {err}")
             finally:
                 self._session = None
+
+        if self._status_session is not None:
+            try:
+                await self._status_session.close()
+            except Exception as err:
+                _LOGGER.warning(f"Failed to close status probe session: {err}")
+            finally:
+                self._status_session = None
 
     async def async_request(
         self,
@@ -250,26 +275,33 @@ class ClashAPI:
             "version": response.get("version", "unknown"),
         }
 
-    async def get_url_status(self, url: str, headers: dict = {}) -> dict:
+    async def get_url_status(self, url: str, headers: dict | None = None) -> dict:
         """
         Get the status code and latency to the given URL.
         """
 
-        async with aiohttp.ClientSession() as session:
-            try:
-                start_time = time.monotonic()
-                async with session.get(url, headers=headers, timeout=10) as response:
-                    response.raise_for_status()
-                    duration = time.monotonic() - start_time
-                    return {"latency": duration, "status_code": response.status}
-            except aiohttp.ClientResponseError as err:
+        try:
+            if self._status_session is None:
+                await self._establish_status_session()
+        except Exception as err:
+            _LOGGER.debug("Error creating status probe session: %s", err)
+            return {"latency": -1, "status_code": 000}
+
+        request_headers = headers or {}
+        start_time = time.monotonic()
+        try:
+            async with self._status_session.get(url, headers=request_headers) as response:
                 duration = time.monotonic() - start_time
-                return {"latency": duration, "status_code": err.status}
-            except asyncio.TimeoutError:
-                return {"latency": -1, "status_code": 000}
-            except Exception as err:
-                _LOGGER.error(f"Error getting status code for {url}: {err}")
-                return {"latency": -1, "status_code": 000}
+                return {"latency": duration, "status_code": response.status}
+        except asyncio.TimeoutError:
+            return {"latency": -1, "status_code": 000}
+        except aiohttp.ClientError as err:
+            duration = time.monotonic() - start_time
+            _LOGGER.debug("Error getting status code for %s: %s", url, err)
+            return {"latency": duration, "status_code": 000}
+        except Exception as err:
+            _LOGGER.error(f"Error getting status code for {url}: {err}")
+            return {"latency": -1, "status_code": 000}
             
     async def async_detect_available_endpoints(self) -> List[Tuple[str, dict]]:
         """Probe API endpoints and cache those that respond successfully."""

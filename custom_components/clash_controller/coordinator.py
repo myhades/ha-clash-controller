@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 from datetime import timedelta
 from typing import Any
@@ -25,10 +26,23 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-EntityData = dict[str, Any]
+@dataclass(slots=True)
+class ClashEntityData:
+    """Structured data model used by entities."""
+
+    name: str | None
+    entity_type: str
+    state: Any = None
+    icon: str | None = None
+    translation_key: str | None = None
+    attributes: dict[str, Any] | None = None
+    options: list[str] | None = None
+    action: dict[str, Any] | None = None
+    unique_key: str | None = None
+    unique_id: str = ""
 
 
-class ClashControllerCoordinator(DataUpdateCoordinator[list[EntityData]]):
+class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
     """A coordinator to fetch data from the Clash API."""
 
     device: DeviceInfo | None = None
@@ -70,6 +84,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[EntityData]]):
             allow_unsafe=self.allow_unsafe,
             available_endpoints=available_endpoints,
         )
+        self._data_by_name: dict[str, ClashEntityData] = {}
+        self._data_by_unique_id: dict[str, ClashEntityData] = {}
         _LOGGER.debug(f"Clash API initialized for coordinator {self.name}")
 
     async def _get_device(self) -> DeviceInfo:
@@ -77,13 +93,22 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[EntityData]]):
         Generate a device object.
         """
         version_info = await self.api.get_version()
-        return DeviceInfo(
-            name = "Clash Instance",
-            manufacturer = "Clash",
-            model = version_info.get("meta"),
-            sw_version = version_info.get("version"),
-            identifiers = {(DOMAIN, self.api.device_id)},
-        )
+        device_kwargs = {
+            "manufacturer": "Clash",
+            "model": version_info.get("meta"),
+            "sw_version": version_info.get("version"),
+            "identifiers": {(DOMAIN, self.api.device_id)},
+        }
+        try:
+            return DeviceInfo(
+                translation_key="clash_instance",
+                **device_kwargs,
+            )
+        except TypeError:
+            return DeviceInfo(
+                name="Clash Instance",
+                **device_kwargs,
+            )
 
     async def _async_update_data(self):
         """
@@ -93,30 +118,29 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[EntityData]]):
         _LOGGER.debug("Start fetching data from Clash.")
 
         try:
-            if await self.api.connected(suppress_errors=False):
-                response = await self.api.fetch_data(
-                    streaming_detection=self.streaming_detection,
-                    suppress_errors=True,
-                )
-                if not self.device:
-                    self.device = await self._get_device()
+            response = await self.api.fetch_data(
+                streaming_detection=self.streaming_detection,
+                suppress_errors=True,
+            )
+            if not self.device:
+                self.device = await self._get_device()
         except Exception as err:
             raise UpdateFailed(err) from err
         
         data = self._build_entity_data(response)
         real_entities = [
-            item for item in data 
-            if item.get("entity_type") != "fakeip_flush_button"
+            item for item in data
+            if item.entity_type != "fakeip_flush_button"
         ]
         if not real_entities:
             raise UpdateFailed("Empty response")
 
         return data
 
-    def _build_entity_data(self, response: dict[str, Any]) -> list[EntityData]:
+    def _build_entity_data(self, response: dict[str, Any]) -> list[ClashEntityData]:
         """Construct entity descriptions from API response."""
 
-        entity_data: list[EntityData] = []
+        entity_data: list[ClashEntityData] = []
         entity_data.extend(self._build_traffic_entities(response.get("traffic", {})))
         entity_data.extend(self._build_connection_entities(response.get("connections", {})))
         entity_data.extend(self._build_memory_entities(response.get("memory", {})))
@@ -125,171 +149,191 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[EntityData]]):
         entity_data.append(self._build_fakeip_button())
 
         for item in entity_data:
-            item["unique_id"] = (
+            id_source = (
+                item.unique_key
+                or item.name
+                or item.translation_key
+                or item.entity_type
+            )
+            item.unique_id = (
                 f"{self.api.device_id}"
-                f"_{item['entity_type']}"
-                f"_{item['name'].lower().replace(' ', '_')}"
+                f"_{item.entity_type}"
+                f"_{id_source.lower().replace(' ', '_')}"
             )
 
+        self._data_by_name = {}
+        for item in entity_data:
+            if item.name and item.name not in self._data_by_name:
+                self._data_by_name[item.name] = item
+        self._data_by_unique_id = {item.unique_id: item for item in entity_data}
         return entity_data
 
     @staticmethod
-    def _build_traffic_entities(traffic: dict[str, Any]) -> list[EntityData]:
+    def _build_traffic_entities(traffic: dict[str, Any]) -> list[ClashEntityData]:
         """Create traffic related entities."""
 
         if not traffic:
             return []
 
         return [
-            {
-                "name": "Upload Speed",
-                "state": traffic.get("up"),
-                "entity_type": "traffic_sensor",
-                "icon": "mdi:arrow-up",
-                "translation_key": "up_speed",
-            },
-            {
-                "name": "Download Speed",
-                "state": traffic.get("down"),
-                "entity_type": "traffic_sensor",
-                "icon": "mdi:arrow-down",
-                "translation_key": "down_speed",
-            },
+            ClashEntityData(
+                name=None,
+                state=traffic.get("up"),
+                entity_type="traffic_sensor",
+                icon="mdi:arrow-up",
+                translation_key="up_speed",
+                unique_key="upload_speed",
+            ),
+            ClashEntityData(
+                name=None,
+                state=traffic.get("down"),
+                entity_type="traffic_sensor",
+                icon="mdi:arrow-down",
+                translation_key="down_speed",
+                unique_key="download_speed",
+            ),
         ]
 
     @staticmethod
-    def _build_connection_entities(connections: dict[str, Any]) -> list[EntityData]:
+    def _build_connection_entities(connections: dict[str, Any]) -> list[ClashEntityData]:
         """Create connection related entities."""
 
         if not connections:
             return []
 
         return [
-            {
-                "name": "Upload Traffic",
-                "state": connections.get("uploadTotal"),
-                "entity_type": "total_traffic_sensor",
-                "icon": "mdi:tray-arrow-up",
-                "translation_key": "up_traffic",
-            },
-            {
-                "name": "Download Traffic",
-                "state": connections.get("downloadTotal"),
-                "entity_type": "total_traffic_sensor",
-                "icon": "mdi:tray-arrow-down",
-                "translation_key": "down_traffic",
-            },
-            {
-                "name": "Connection Number",
-                "state": len(connections.get("connections", []) or []),
-                "entity_type": "connection_sensor",
-                "icon": "mdi:transit-connection",
-                "translation_key": "connection_number",
-            },
+            ClashEntityData(
+                name=None,
+                state=connections.get("uploadTotal"),
+                entity_type="total_traffic_sensor",
+                icon="mdi:tray-arrow-up",
+                translation_key="up_traffic",
+                unique_key="upload_traffic",
+            ),
+            ClashEntityData(
+                name=None,
+                state=connections.get("downloadTotal"),
+                entity_type="total_traffic_sensor",
+                icon="mdi:tray-arrow-down",
+                translation_key="down_traffic",
+                unique_key="download_traffic",
+            ),
+            ClashEntityData(
+                name=None,
+                state=len(connections.get("connections", []) or []),
+                entity_type="connection_sensor",
+                icon="mdi:transit-connection",
+                translation_key="connection_number",
+                unique_key="connection_number",
+            ),
         ]
 
     @staticmethod
-    def _build_memory_entities(memory: dict[str, Any]) -> list[EntityData]:
+    def _build_memory_entities(memory: dict[str, Any]) -> list[ClashEntityData]:
         """Create memory related entities."""
 
         if not memory:
             return []
 
         return [
-            {
-                "name": "Memory Used",
-                "state": memory.get("inuse"),
-                "entity_type": "memory_sensor",
-                "icon": "mdi:memory",
-                "translation_key": "memory_used",
-            }
+            ClashEntityData(
+                name=None,
+                state=memory.get("inuse"),
+                entity_type="memory_sensor",
+                icon="mdi:memory",
+                translation_key="memory_used",
+                unique_key="memory_used",
+            )
         ]
 
-    def _build_fakeip_button(self) -> EntityData:
+    def _build_fakeip_button(self) -> ClashEntityData:
         """Create FakeIP cache flush button entity."""
 
-        return {
-            "name": "Flush FakeIP Cache",
-            "entity_type": "fakeip_flush_button",
-            "icon": "mdi:broom",
-            "translation_key": "flush_cache",
-            "action": {
+        return ClashEntityData(
+            name=None,
+            entity_type="fakeip_flush_button",
+            icon="mdi:broom",
+            translation_key="flush_cache",
+            action={
                 "method": self.api.async_request,
                 "args": ("POST", "cache/fakeip/flush"),
+                "kwargs": {"suppress_errors": False},
             },
-        }
+            unique_key="flush_fakeip_cache",
+        )
 
     @staticmethod
-    def _build_proxy_entities(proxies: dict[str, Any]) -> list[EntityData]:
+    def _build_proxy_entities(proxies: dict[str, Any]) -> list[ClashEntityData]:
         """Create entities for proxy groups."""
 
-        entity_data: list[EntityData] = []
+        entity_data: list[ClashEntityData] = []
         group_selector_items = ["tfo", "type", "udp", "xudp", "alive", "history"]
         group_sensor_items = group_selector_items + ["all"]
 
         for item in proxies.get("proxies", {}).values():
             if item.get("type") in ["Selector", "Fallback"]:
                 entity_data.append(
-                    {
-                        "name": item.get("name"),
-                        "state": item.get("now"),
-                        "entity_type": "proxy_group_selector",
-                        "icon": "mdi:network-outline",
-                        "options": item.get("all"),
-                        "attributes": {
+                    ClashEntityData(
+                        name=item.get("name", ""),
+                        state=item.get("now"),
+                        entity_type="proxy_group_selector",
+                        icon="mdi:network-outline",
+                        options=item.get("all"),
+                        attributes={
                             k: item[k] for k in group_selector_items if k in item
                         },
-                    }
+                    )
                 )
             elif item.get("type") == "URLTest":
                 entity_data.append(
-                    {
-                        "name": item.get("name"),
-                        "state": item.get("now"),
-                        "entity_type": "proxy_group_sensor",
-                        "icon": "mdi:network-outline",
-                        "attributes": {
+                    ClashEntityData(
+                        name=item.get("name", ""),
+                        state=item.get("now"),
+                        entity_type="proxy_group_sensor",
+                        icon="mdi:network-outline",
+                        attributes={
                             k: item[k] for k in group_sensor_items if k in item
                         },
-                    }
+                    )
                 )
 
         return entity_data
 
-    def _build_streaming_entities(self, streaming: dict[str, Any]) -> list[EntityData]:
+    def _build_streaming_entities(self, streaming: dict[str, Any]) -> list[ClashEntityData]:
         """Create streaming detection entities."""
 
         if not self.streaming_detection or not streaming:
             return []
 
-        entity_data: list[EntityData] = []
+        entity_data: list[ClashEntityData] = []
 
         for service, details in streaming.items():
             service_info = SERVICE_TABLE.get(service)
             code_table = service_info.get("code_table", {})
             code = details.get("status_code", 0)
             entity_data.append(
-                {
-                    "name": service_info.get("name", "Unknown Service"),
-                    "state": code_table.get(code, "unknown"),
-                    "icon": service_info.get("icon", "mdi:play"),
-                    "attributes": details,
-                    "options": list(code_table.values()) + ["unknown"],
-                    "entity_type": "streaming_detection",
-                    "translation_key": service + "_service",
-                }
+                ClashEntityData(
+                    name=None,
+                    state=code_table.get(code, "unknown"),
+                    icon=service_info.get("icon", "mdi:play"),
+                    attributes=details,
+                    options=list(code_table.values()) + ["unknown"],
+                    entity_type="streaming_detection",
+                    translation_key=service + "_service",
+                    unique_key=(service_info.get("name", service)).lower().replace(" ", "_"),
+                )
             )
 
         return entity_data
 
-    def get_data_by_name(self, name: str) -> dict | None:
+    def get_data_by_name(self, name: str) -> ClashEntityData | None:
         """
         Retrieve data by name.
         """
-        return next((item for item in self.data if item["name"] == name), None)
+        return self._data_by_name.get(name)
 
-    def get_data_by_unique_id(self, unique_id: str) -> dict | None:
+    def get_data_by_unique_id(self, unique_id: str) -> ClashEntityData | None:
         """
         Retrieve data by unique ID.
         """
-        return next((item for item in self.data if item["unique_id"] == unique_id), None)
+        return self._data_by_unique_id.get(unique_id)

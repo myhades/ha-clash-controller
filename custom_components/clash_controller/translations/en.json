@@ -40,8 +40,13 @@
             "invalid_token": "The provided API token is invalid. Please check and try again."
         }
     },
+    "device": {
+        "clash_instance": {
+            "name": "Clash Instance"
+        }
+    },
     "entity": {
-        "select":{
+        "button":{
           "flush_cache": {
             "name": "Flush FakeIP Cache"
           }
@@ -62,7 +67,7 @@
           "memory_used": {
             "name": "Memory Used"
           },
-          "connection_sensor": {
+          "connection_number": {
             "name": "Connection Number"
           },
           "netflix_service": {

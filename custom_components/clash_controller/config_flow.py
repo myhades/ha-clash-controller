@@ -156,7 +156,6 @@ class ClashControllerOptionsFlow(OptionsFlow):
                     data[CONF_BEAR_TOKEN] = token
                     self.hass.config_entries.async_update_entry(config_entry, data=data)
 
-                await self.hass.config_entries.async_reload(config_entry.entry_id)
                 return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(

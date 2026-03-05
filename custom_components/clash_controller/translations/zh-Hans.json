@@ -40,8 +40,13 @@
             "invalid_token": "提供的 API 令牌无效，请检查后重试。"
         }
     },
+    "device": {
+        "clash_instance": {
+            "name": "Clash \u5b9e\u4f8b"
+        }
+    },
     "entity": {
-        "select":{
+        "button":{
           "flush_cache": {
             "name": "清除 FakeIP 缓存"
           }
@@ -62,7 +67,7 @@
           "memory_used": {
             "name": "内存占用"
           },
-          "connection_sensor": {
+          "connection_number": {
             "name": "连接数"
           },
           "netflix_service": {

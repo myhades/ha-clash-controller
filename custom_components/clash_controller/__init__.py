@@ -66,7 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         coordinator, cancel_update_listener, True
     )
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
-    ClashServicesSetup(hass, config_entry)
+    ClashServicesSetup(hass)
     return True
 
 
@@ -86,10 +86,9 @@ async def async_remove_config_entry_device(
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
 
-    for service in hass.services.async_services_for_domain(DOMAIN):
-        hass.services.async_remove(DOMAIN, service)
-    hass.data[DOMAIN][config_entry.entry_id].cancel_update_listener()
-    coordinator = hass.data[DOMAIN][config_entry.entry_id].coordinator
+    runtime_data = hass.data[DOMAIN][config_entry.entry_id]
+    runtime_data.cancel_update_listener()
+    coordinator = runtime_data.coordinator
     if coordinator:
         await coordinator.api.close_session()
     unload_ok = await hass.config_entries.async_unload_platforms(
@@ -97,4 +96,8 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     )
     if unload_ok:
         hass.data[DOMAIN].pop(config_entry.entry_id)
+        if not hass.data[DOMAIN]:
+            for service in list(hass.services.async_services_for_domain(DOMAIN)):
+                hass.services.async_remove(DOMAIN, service)
+            hass.data.pop(DOMAIN)
     return unload_ok
