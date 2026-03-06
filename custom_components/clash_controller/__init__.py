@@ -50,21 +50,22 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         _LOGGER.warning(err)
         coordinator.data = coordinator.data or []
 
-    capabilities = coordinator.api.capabilities or {}
-    available_endpoints = coordinator.api.available_endpoints or []
-    normalized_endpoints = [list(item) for item in available_endpoints]
-    if (
-        config_entry.data.get("capabilities") != capabilities
-        or config_entry.data.get("available_endpoints") != normalized_endpoints
-    ):
-        hass.config_entries.async_update_entry(
-            config_entry,
-            data={
-                **config_entry.data,
-                "available_endpoints": normalized_endpoints,
-                "capabilities": capabilities,
-            },
-        )
+    if coordinator.last_update_success:
+        capabilities = coordinator.api.capabilities or {}
+        available_endpoints = coordinator.api.available_endpoints or []
+        normalized_endpoints = [list(item) for item in available_endpoints]
+        if (
+            config_entry.data.get("capabilities") != capabilities
+            or config_entry.data.get("available_endpoints") != normalized_endpoints
+        ):
+            hass.config_entries.async_update_entry(
+                config_entry,
+                data={
+                    **config_entry.data,
+                    "available_endpoints": normalized_endpoints,
+                    "capabilities": capabilities,
+                },
+            )
 
     cancel_update_listener = config_entry.add_update_listener(_async_update_listener)
     hass.data[DOMAIN][config_entry.entry_id] = RuntimeData(
