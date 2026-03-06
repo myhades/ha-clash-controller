@@ -8,26 +8,27 @@
 
 A Home Assistant integration for controlling an external Clash (now [Mihomo](https://github.com/MetaCubeX/mihomo)) instance through RESTful API.
 
-This is not a Clash implementation or client, but an external controller in the form of a Home Asssistant integration designed to streamline automated network control. 
+This is not a Clash implementation or client, but an external controller in the form of a Home Assistant integration designed to streamline automated network control. 
 
 This integration is my very first Python / Home Assistant project, and I’m still learning. Please expect some instability and rough edges. Feedback and contributions are greatly appreciated. If you find this project useful, consider giving it a ⭐star to show your support!
 
-## Supported Version
+## Compatibility
 
-This integration should work with most of the Clash clients. 
-Known working: OpenClash, ShellClash and MerlinClash.
+This integration should work with most Clash cores and variants with Clash-compatible API. 
+Known working clients: Nikki, OpenClash, ShellClash and MerlinClash.
 
 Core support:
 
-| Core Name       | Supported |
-|-----------------|-----------|
-| Clash           | Partially |
-| Clash Premium   | Partially |
-| Clash Meta      | Yes       |
+| Core Name       | Supported | Tested Version |
+|-----------------|-----------|----------------|
+| Clash           | Partially | v0.18.0        |
+| Clash Premium   | Partially | 2023.08.17     |
+| Clash Meta      | Partially | ```N/A```      |
+| Mihomo          | Yes       | v1.19.18       |
 
 ## Installation
 
-Home Assistant Core must be newer than version `2024.4.3`. 
+Home Assistant Core must be `2024.4.3` or newer. 
 
 Choose your preferred installation method, and reboot Home Assistant afterward.
 
@@ -57,6 +58,8 @@ Notes:
 ## Usage
 
 Availability of the following entities and services varies across cores.
+Endpoint capability is detected automatically at setup, and entities using unsupported endpoints will not be created.
+For real-time data, websocket endpoints are preferred when available, with HTTP fallback.
 
 ### 1. Entities
 
@@ -66,7 +69,11 @@ Availability of the following entities and services varies across cores.
 - Total traffic sensor (up/down)
 - Connection number sensor
 - Memory info sensor
+- Provider count sensors
 - Flush FakeIP cache button
+- Flush DNS cache button
+- Proxy provider healthcheck buttons
+- Proxy mode selector
 
 ### 2. Services
 
@@ -230,7 +237,7 @@ To enable/disable this feature, navigate to "Settings"  > "Devices & services"  
 Currently supported service(s): Netflix.
 
 ## Known Issue
-If you're connecting to a Clash behind Nginx or other reverse proxy server, some real-time sensors will not work and get "unknown" state instead. I'm still working on this.
+If you're connecting to a Clash behind a reverse proxy server, some real-time sensors will not work and thus not generated. I'm still working on this.
 
 ## Feedback
 To report an issue, please include details about your Clash configuration such as client type, core type and core version, along with debug logs of this integration.

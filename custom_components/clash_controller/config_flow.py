@@ -99,7 +99,8 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
             errors = await _test_connection(api)
             if "base" not in errors:
-                user_input["available_endpoints"] = await api.async_detect_available_endpoints()
+                user_input["capabilities"] = {}
+                user_input["available_endpoints"] = []
                 await api.close_session()
                 return self.async_create_entry(title=api_url, data=user_input)
             await api.close_session()
@@ -156,7 +157,6 @@ class ClashControllerOptionsFlow(OptionsFlow):
                     data[CONF_BEAR_TOKEN] = token
                     self.hass.config_entries.async_update_entry(config_entry, data=data)
 
-                await self.hass.config_entries.async_reload(config_entry.entry_id)
                 return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(

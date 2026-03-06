@@ -5,11 +5,12 @@ import logging
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base import BaseEntity
 from .const import DOMAIN
-from .coordinator import ClashControllerCoordinator
+from .coordinator import ClashControllerCoordinator, ClashEntityData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,12 +24,14 @@ async def async_setup_entry(
 
     button_types = {
         "fakeip_flush_button": ButtonEntityBase,
+        "dns_flush_button": ButtonEntityBase,
+        "provider_healthcheck_button": ButtonEntityBase,
     }
 
     buttons = [
         button_types[entity_type](coordinator, entity_data)
         for entity_data in coordinator.data
-        if (entity_type := entity_data.get("entity_type")) in button_types
+        if (entity_type := entity_data.entity_type) in button_types
     ]
 
     async_add_entities(buttons)
@@ -36,12 +39,18 @@ async def async_setup_entry(
 class ButtonEntityBase(BaseEntity, ButtonEntity):
     """Base button entity class."""
 
-    def __init__(self, coordinator: ClashControllerCoordinator, entity_data: dict) -> None:
+    def __init__(
+        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
+    ) -> None:
         super().__init__(coordinator, entity_data)
 
     async def async_press(self) -> None:
         """Press action."""
-        method = self.entity_data.get("action").get("method")
-        args = self.entity_data.get("action").get("args", [])
-        await method(*args)
+        action = self.entity_data.action or {}
+        method = action.get("method")
+        args = action.get("args", [])
+        kwargs = action.get("kwargs", {})
+        if method is None:
+            raise HomeAssistantError("No action defined for this button.")
+        await method(*args, **kwargs)
         self.async_write_ha_state()

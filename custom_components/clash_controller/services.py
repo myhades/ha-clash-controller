@@ -2,9 +2,9 @@
 
 import asyncio
 import json
+from urllib.parse import quote
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICE_ID
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
@@ -102,53 +102,64 @@ API_CALL_SCHEMA = vol.Schema(
 class ClashServicesSetup:
     """Class to handle Integration Services."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
-        self.config_entry = config_entry
-        self.coordinator: ClashControllerCoordinator = hass.data[DOMAIN][config_entry.entry_id].coordinator
         self.setup_services()
 
     def setup_services(self):
         """Initialise the services."""
-        self.hass.services.async_register(
-            DOMAIN,
+
+        def _register(
+            service_name: str,
+            handler,
+            schema: vol.Schema,
+            supports_response: SupportsResponse | None = None,
+        ) -> None:
+            if self.hass.services.has_service(DOMAIN, service_name):
+                return
+            kwargs = {"schema": schema}
+            if supports_response is not None:
+                kwargs["supports_response"] = supports_response
+            self.hass.services.async_register(
+                DOMAIN,
+                service_name,
+                handler,
+                **kwargs,
+            )
+
+        _register(
             REBOOT_CORE_SERVICE_NAME,
             self.async_reboot_core_service,
-            schema=REBOOT_CORE_SERVICE_SCHEMA
+            REBOOT_CORE_SERVICE_SCHEMA,
         )
-        self.hass.services.async_register(
-            DOMAIN,
+        _register(
             FILTER_CONNECTION_SERVICE_NAME,
             self.async_filter_connection_service,
-            schema=FILTER_CONNECTION_SCHEMA,
+            FILTER_CONNECTION_SCHEMA,
             supports_response=SupportsResponse.OPTIONAL,
         )
-        self.hass.services.async_register(
-            DOMAIN,
+        _register(
             GET_LATENCY_SERVICE_NAME,
             self.async_get_latency_service,
-            schema=GET_LATENCY_SCHEMA,
+            GET_LATENCY_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
-        self.hass.services.async_register(
-            DOMAIN,
+        _register(
             DNS_QUERY_SERVICE_NAME,
             self.async_dns_query_service,
-            schema=DNS_QUERY_SCHEMA,
+            DNS_QUERY_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
-        self.hass.services.async_register(
-            DOMAIN,
+        _register(
             GET_RULE_SERVICE_NAME,
             self.async_get_rule_service,
-            schema=GET_RULE_SCHEMA,
+            GET_RULE_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
-        self.hass.services.async_register(
-            DOMAIN,
+        _register(
             API_CALL_SERVICE_NAME,
             self.async_api_call_service,
-            schema=API_CALL_SCHEMA,
+            API_CALL_SCHEMA,
             supports_response=SupportsResponse.OPTIONAL,
         )
 
@@ -157,10 +168,15 @@ class ClashServicesSetup:
 
         dev_reg = dr.async_get(self.hass)
         device = dev_reg.async_get(device_id)
-        config_entry_id = next(iter(device.config_entries), None)
-        if not device or not config_entry_id:
+        if not device:
             raise HomeAssistantError("Invalid device id.")
-        return self.hass.data[DOMAIN][config_entry_id].coordinator
+        config_entry_id = next(iter(device.config_entries), None)
+        if not config_entry_id:
+            raise HomeAssistantError("Invalid device id.")
+        runtime_data = self.hass.data.get(DOMAIN, {}).get(config_entry_id)
+        if not runtime_data:
+            raise HomeAssistantError("Invalid device id.")
+        return runtime_data.coordinator
 
     async def async_reboot_core_service(self, service_call: ServiceCall) -> None:
         """Execute service call for rebooting core."""
@@ -179,7 +195,11 @@ class ClashServicesSetup:
 
         def parse_filter(key):
             value_str = service_call.data.get(key)
-            return {item.strip() for item in value_str.split(",") if item.strip()} if value_str else None
+            return (
+                {item.strip().lower() for item in value_str.split(",") if item.strip()}
+                if value_str
+                else None
+            )
 
         def filter_connection(conn):
             meta = conn.get("metadata", {})
@@ -196,7 +216,11 @@ class ClashServicesSetup:
 
         async def delete_connection(conn_id):
             async with semaphore:
-                await coordinator.api.async_request("DELETE", f"connections/{conn_id}")
+                await coordinator.api.async_request(
+                    "DELETE",
+                    f"connections/{conn_id}",
+                    suppress_errors=False,
+                )
 
         hosts = parse_filter(HOST_KEYWORD)
         src_hosts = parse_filter(SRC_HOSTNAME_KEYWORD)
@@ -227,7 +251,11 @@ class ClashServicesSetup:
                     delete_connection(conn["id"]) for conn in filtered_connections
                 ])
             else:
-                await coordinator.api.async_request("DELETE", "connections")
+                await coordinator.api.async_request(
+                    "DELETE",
+                    "connections",
+                    suppress_errors=False,
+                )
         except Exception as err:
             raise HomeAssistantError(f"Error closing connection: {err}") from err
 
@@ -249,7 +277,7 @@ class ClashServicesSetup:
         
         group = service_call.data.get(GROUP_NAME, "").strip()
         node = service_call.data.get(NODE_NAME, "").strip()
-        url = service_call.data.get(TEST_URL, "http://www.gstatic.cn/generate_204")
+        url = service_call.data.get(TEST_URL, "http://www.gstatic.com/generate_204")
         timeout = service_call.data.get(TEST_TIMEOUT, 5000)
         
         if bool(group) ^ bool(node) is False:
@@ -258,7 +286,11 @@ class ClashServicesSetup:
         try:
             response = await coordinator.api.async_request(
                 method="GET",
-                endpoint=f"group/{group}/delay" if group else f"proxies/{node}/delay",
+                endpoint=(
+                    f"group/{quote(group, safe='')}/delay"
+                    if group
+                    else f"proxies/{quote(node, safe='')}/delay"
+                ),
                 params={"url": url,"timeout": timeout},
                 suppress_errors=False
             )
@@ -295,7 +327,11 @@ class ClashServicesSetup:
 
         def parse_filter(key):
             value_str = service_call.data.get(key)
-            return {item.strip() for item in value_str.split(",") if item.strip()} if value_str else None
+            return (
+                {item.strip().lower() for item in value_str.split(",") if item.strip()}
+                if value_str
+                else None
+            )
 
         def filter_rule(rule):
             rule_type = rule.get("type", "").lower()
