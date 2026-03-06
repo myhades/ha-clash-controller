@@ -14,17 +14,17 @@ This integration is my very first Python / Home Assistant project, and I’m sti
 
 ## Supported Version
 
-This integration should work with most of the Clash clients. 
-Known working: OpenClash, ShellClash and MerlinClash.
+This integration should work with most Clash variants with Clash-compatible API. 
+Known working clients: Nikki, OpenClash, ShellClash and MerlinClash.
 
 Core support:
 
-| Core Name       | Supported |
-|-----------------|-----------|
-| Clash           | Partially |
-| Clash Premium   | Partially |
-| Clash Meta      | Yes       |
-| Mihomo          | Yes       |
+| Core Name       | Supported | Tested Version |
+|-----------------|-----------|----------------|
+| Clash           | Partially | v0.18.0        |
+| Clash Premium   | Partially | 2023.08.17     |
+| Clash Meta      | Partially | ```N/A```      |
+| Mihomo          | Yes       | v1.19.18       |
 
 ## Installation
 
@@ -237,7 +237,7 @@ To enable/disable this feature, navigate to "Settings"  > "Devices & services"  
 Currently supported service(s): Netflix.
 
 ## Known Issue
-If you're connecting to a Clash behind Nginx or other reverse proxy server, some real-time sensors will not work and get "unknown" state instead. I'm still working on this.
+If you're connecting to a Clash behind a reverse proxy server, some real-time sensors will not work and thus not generated. I'm still working on this.
 
 ## Feedback
 To report an issue, please include details about your Clash configuration such as client type, core type and core version, along with debug logs of this integration.

@@ -272,7 +272,7 @@ class ClashAPI:
         self, force: bool = False
     ) -> dict[str, bool]:
         """Probe API endpoints and websocket support."""
-        if self._capabilities is not None and not force:
+        if self._capabilities and not force:
             return self._capabilities
 
         probe_tasks = {
@@ -309,9 +309,29 @@ class ClashAPI:
 
         probe_names = list(probe_tasks.keys())
         probe_results = await asyncio.gather(*probe_tasks.values(), return_exceptions=True)
-        capabilities: dict[str, bool] = {}
+        http_capabilities: dict[str, bool] = {}
         for name, result in zip(probe_names, probe_results):
-            capabilities[name] = bool(result) if not isinstance(result, Exception) else False
+            http_capabilities[name] = (
+                bool(result) if not isinstance(result, Exception) else False
+            )
+
+        ws_results = await asyncio.gather(
+            self._probe_ws_endpoint("traffic"),
+            self._probe_ws_endpoint("memory"),
+            self._probe_ws_endpoint("connections?interval=1"),
+            return_exceptions=True,
+        )
+        ws_traffic, ws_memory, ws_connections = (
+            bool(result) if not isinstance(result, Exception) else False
+            for result in ws_results
+        )
+
+        capabilities: dict[str, bool] = dict(http_capabilities)
+        capabilities["traffic"] = http_capabilities.get("traffic", False) or ws_traffic
+        capabilities["memory"] = http_capabilities.get("memory", False) or ws_memory
+        capabilities["connections"] = (
+            http_capabilities.get("connections", False) or ws_connections
+        )
 
         capabilities["group_detail"] = capabilities.get("group", False)
         capabilities["group_delay"] = capabilities.get("group", False) and capabilities.get(
@@ -324,33 +344,20 @@ class ClashAPI:
         capabilities["provider_proxy_healthcheck"] = capabilities.get(
             "providers_proxies", False
         )
-
-        capabilities["ws_traffic"] = (
-            await self._probe_ws_endpoint("traffic")
-            if capabilities.get("traffic")
-            else False
-        )
-        capabilities["ws_memory"] = (
-            await self._probe_ws_endpoint("memory")
-            if capabilities.get("memory")
-            else False
-        )
-        capabilities["ws_connections"] = (
-            await self._probe_ws_endpoint("connections?interval=1")
-            if capabilities.get("connections")
-            else False
-        )
+        capabilities["ws_traffic"] = ws_traffic
+        capabilities["ws_memory"] = ws_memory
+        capabilities["ws_connections"] = ws_connections
         capabilities["ws_logs"] = False
 
         self._capabilities = capabilities
         self._available_endpoints = []
-        if capabilities.get("memory"):
+        if http_capabilities.get("memory"):
             self._available_endpoints.append(("memory", {"read_line": 2}))
-        if capabilities.get("traffic"):
+        if http_capabilities.get("traffic"):
             self._available_endpoints.append(("traffic", {"read_line": 1}))
-        if capabilities.get("connections"):
+        if http_capabilities.get("connections"):
             self._available_endpoints.append(("connections", {}))
-        if capabilities.get("proxies"):
+        if http_capabilities.get("proxies"):
             self._available_endpoints.append(("proxies", {}))
 
         supported = ", ".join(

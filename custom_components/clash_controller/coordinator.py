@@ -340,7 +340,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 fixed_value = item.get("fixed")
                 supports_fixed = "fixed" in item
                 attributes = {k: item[k] for k in urltest_items if k in item}
-                attributes["fixed"] = bool(fixed_value)
+                if supports_fixed:
+                    attributes["fixed"] = bool(fixed_value)
                 entity_data.append(
                     ClashEntityData(
                         name=item.get("name", ""),
