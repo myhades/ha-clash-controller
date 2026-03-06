@@ -8,13 +8,13 @@
 
 A Home Assistant integration for controlling an external Clash (now [Mihomo](https://github.com/MetaCubeX/mihomo)) instance through RESTful API.
 
-This is not a Clash implementation or client, but an external controller in the form of a Home Asssistant integration designed to streamline automated network control. 
+This is not a Clash implementation or client, but an external controller in the form of a Home Assistant integration designed to streamline automated network control. 
 
 This integration is my very first Python / Home Assistant project, and I’m still learning. Please expect some instability and rough edges. Feedback and contributions are greatly appreciated. If you find this project useful, consider giving it a ⭐star to show your support!
 
-## Supported Version
+## Compatibility
 
-This integration should work with most Clash variants with Clash-compatible API. 
+This integration should work with most Clash cores and variants with Clash-compatible API. 
 Known working clients: Nikki, OpenClash, ShellClash and MerlinClash.
 
 Core support:
@@ -28,7 +28,7 @@ Core support:
 
 ## Installation
 
-Home Assistant Core must be newer than version `2024.4.3`. 
+Home Assistant Core must be `2024.4.3` or newer. 
 
 Choose your preferred installation method, and reboot Home Assistant afterward.
 
@@ -73,7 +73,7 @@ For real-time data, websocket endpoints are preferred when available, with HTTP 
 - Flush FakeIP cache button
 - Flush DNS cache button
 - Proxy provider healthcheck buttons
-- proxy mode selector
+- Proxy mode selector
 
 ### 2. Services
 
