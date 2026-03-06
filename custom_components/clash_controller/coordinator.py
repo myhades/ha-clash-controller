@@ -28,6 +28,17 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_HEALTHCHECK_TIMEOUT_MS = 5000
+CORE_DATA_KEYS = frozenset(
+    {
+        "traffic",
+        "memory",
+        "connections",
+        "proxies",
+        "configs",
+        "providers_proxies",
+        "providers_rules",
+    }
+)
 
 
 @dataclass(slots=True)
@@ -135,6 +146,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 streaming_detection=self.streaming_detection,
                 suppress_errors=True,
             )
+            if not CORE_DATA_KEYS.intersection(response):
+                raise UpdateFailed("No data returned from Clash core.")
             if not self.device:
                 self.device = await self._get_device()
         except Exception as err:

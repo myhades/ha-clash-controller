@@ -5,7 +5,9 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import pytest
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.clash_controller.coordinator import ClashControllerCoordinator
 
@@ -124,3 +126,22 @@ def test_build_provider_entities_without_healthcheck() -> None:
         "provider_count_sensor",
         "provider_count_sensor",
     ]
+
+
+@pytest.mark.asyncio
+async def test_async_update_data_fails_when_core_returns_no_data() -> None:
+    """A fully unreachable core should fail the update instead of keeping partial entities."""
+    coordinator = object.__new__(ClashControllerCoordinator)
+    coordinator.api = SimpleNamespace(
+        fetch_data=AsyncMock(return_value={}),
+        capabilities={
+            "cache_fakeip_flush": True,
+            "providers_proxies": True,
+            "provider_healthcheck": False,
+        },
+    )
+    coordinator.device = object()
+    coordinator.streaming_detection = False
+
+    with pytest.raises(UpdateFailed, match="No data returned from Clash core."):
+        await ClashControllerCoordinator._async_update_data(coordinator)
