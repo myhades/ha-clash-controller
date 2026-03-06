@@ -5,6 +5,7 @@ import logging
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base import BaseEntity
@@ -23,6 +24,8 @@ async def async_setup_entry(
 
     button_types = {
         "fakeip_flush_button": ButtonEntityBase,
+        "dns_flush_button": ButtonEntityBase,
+        "provider_healthcheck_button": ButtonEntityBase,
     }
 
     buttons = [
@@ -47,5 +50,7 @@ class ButtonEntityBase(BaseEntity, ButtonEntity):
         method = action.get("method")
         args = action.get("args", [])
         kwargs = action.get("kwargs", {})
+        if method is None:
+            raise HomeAssistantError("No action defined for this button.")
         await method(*args, **kwargs)
         self.async_write_ha_state()

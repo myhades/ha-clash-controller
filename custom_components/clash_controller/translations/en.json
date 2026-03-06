@@ -49,6 +49,26 @@
         "button":{
           "flush_cache": {
             "name": "Flush FakeIP Cache"
+          },
+          "flush_dns_cache": {
+            "name": "Flush DNS Cache"
+          },
+          "provider_healthcheck": {
+            "name": "{provider_name} Healthcheck"
+          },
+          "default_proxy_group_healthcheck": {
+            "name": "Default Proxy Group Healthcheck"
+          }
+        },
+        "select": {
+          "core_mode": {
+            "name": "Proxy Mode",
+            "state": {
+                "rule": "Rule",
+                "global": "Global",
+                "direct": "Direct",
+                "script": "Script"
+            }
           }
         },
         "sensor": {
@@ -69,6 +89,12 @@
           },
           "connection_number": {
             "name": "Connection Number"
+          },
+          "proxy_provider_count": {
+            "name": "Proxy Provider Count"
+          },
+          "rule_provider_count": {
+            "name": "Rule Provider Count"
           },
           "netflix_service": {
             "name": "Netflix",

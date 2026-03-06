@@ -24,6 +24,7 @@ Core support:
 | Clash           | Partially |
 | Clash Premium   | Partially |
 | Clash Meta      | Yes       |
+| Mihomo          | Yes       |
 
 ## Installation
 
@@ -57,6 +58,8 @@ Notes:
 ## Usage
 
 Availability of the following entities and services varies across cores.
+Endpoint capability is detected automatically at setup, and entities using unsupported endpoints will not be created.
+For real-time data, websocket endpoints are preferred when available, with HTTP fallback.
 
 ### 1. Entities
 
@@ -66,7 +69,11 @@ Availability of the following entities and services varies across cores.
 - Total traffic sensor (up/down)
 - Connection number sensor
 - Memory info sensor
+- Provider count sensors
 - Flush FakeIP cache button
+- Flush DNS cache button
+- Proxy provider healthcheck buttons
+- proxy mode selector
 
 ### 2. Services
 

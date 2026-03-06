@@ -42,13 +42,33 @@
     },
     "device": {
         "clash_instance": {
-            "name": "Clash \u5b9e\u4f8b"
+            "name": "Clash 实例"
         }
     },
     "entity": {
         "button":{
           "flush_cache": {
             "name": "清除 FakeIP 缓存"
+          },
+          "flush_dns_cache": {
+            "name": "清除 DNS 缓存"
+          },
+          "provider_healthcheck": {
+            "name": "{provider_name} 测速"
+          },
+          "default_proxy_group_healthcheck": {
+            "name": "默认代理组测速"
+          }
+        },
+        "select": {
+          "core_mode": {
+            "name": "代理模式",
+            "state": {
+                "rule": "规则",
+                "global": "全局",
+                "direct": "直连",
+                "script": "脚本"
+            }
           }
         },
         "sensor": {
@@ -69,6 +89,12 @@
           },
           "connection_number": {
             "name": "连接数"
+          },
+          "proxy_provider_count": {
+            "name": "代理集合数量"
+          },
+          "rule_provider_count": {
+            "name": "规则集合数量"
           },
           "netflix_service": {
             "name": "Netflix",

@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from urllib.parse import quote
 import voluptuous as vol
 
 from homeassistant.const import CONF_DEVICE_ID
@@ -285,7 +286,11 @@ class ClashServicesSetup:
         try:
             response = await coordinator.api.async_request(
                 method="GET",
-                endpoint=f"group/{group}/delay" if group else f"proxies/{node}/delay",
+                endpoint=(
+                    f"group/{quote(group, safe='')}/delay"
+                    if group
+                    else f"proxies/{quote(node, safe='')}/delay"
+                ),
                 params={"url": url,"timeout": timeout},
                 suppress_errors=False
             )

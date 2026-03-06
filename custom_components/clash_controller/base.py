@@ -31,6 +31,11 @@ class BaseEntity(CoordinatorEntity):
         self._attr_unique_id = self._entity_unique_id
         self._attr_icon = self.entity_data.icon
         self._attr_translation_key = self.entity_data.translation_key
+        if self.entity_data.translation_placeholders is not None:
+            self._attr_translation_placeholders = self.entity_data.translation_placeholders
+        if self.entity_data.enabled_default is not None:
+            self._attr_entity_registry_enabled_default = self.entity_data.enabled_default
+        self._attr_entity_category = self.entity_data.entity_category
         self._attr_available = True
 
         entity_label = (

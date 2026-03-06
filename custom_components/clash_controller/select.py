@@ -1,6 +1,7 @@
 """Select platform for Clash Controller."""
 
 import logging
+from urllib.parse import quote
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -24,6 +25,7 @@ async def async_setup_entry(
 
     select_types = {
         "proxy_group_selector": GroupSelect,
+        "core_mode_selector": CoreModeSelect,
     }
 
     selects = [
@@ -65,11 +67,44 @@ class GroupSelect(SelectEntityBase):
         try:
             await self.coordinator.api.async_request(
                 "PUT",
-                f"proxies/{group}",
+                f"proxies/{quote(group, safe='')}",
                 json_data={"name": node},
                 suppress_errors=False,
             )
         except Exception as err:
             raise HomeAssistantError(f"Failed to set proxy group {group} to {node}.") from err
         self.entity_data.state = option
+        self.async_write_ha_state()
+
+class CoreModeSelect(SelectEntityBase):
+    """Implementation of core mode select."""
+
+    def __init__(
+        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
+    ) -> None:
+        super().__init__(coordinator, entity_data)
+
+    async def async_select_option(self, option: str) -> None:
+        """Change Clash running mode."""
+        mode = option.strip()
+        if not mode:
+            raise HomeAssistantError("Mode cannot be empty.")
+        try:
+            await self.coordinator.api.async_request(
+                "PATCH",
+                "configs",
+                json_data={"mode": mode},
+                suppress_errors=False,
+            )
+        except Exception:
+            try:
+                await self.coordinator.api.async_request(
+                    "PUT",
+                    "configs",
+                    json_data={"mode": mode},
+                    suppress_errors=False,
+                )
+            except Exception as err:
+                raise HomeAssistantError(f"Failed to set mode to {mode}.") from err
+        self.entity_data.state = mode
         self.async_write_ha_state()

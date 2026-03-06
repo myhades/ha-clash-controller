@@ -31,6 +31,7 @@ async def async_setup_entry(
         "memory_sensor": MemorySensor,
         "total_traffic_sensor": TotalTrafficSensor,
         "connection_sensor": ConnectionSensor,
+        "provider_count_sensor": ProviderCountSensor,
         "proxy_group_sensor": GroupSensor,
         "streaming_detection": StreamingSensor,
     }
@@ -85,6 +86,15 @@ class TotalTrafficSensor(SensorEntityBase):
 
 class ConnectionSensor(SensorEntityBase):
     """Implementation of a traffic sensor."""
+
+    def __init__(
+        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
+    ) -> None:
+        super().__init__(coordinator, entity_data)
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+class ProviderCountSensor(SensorEntityBase):
+    """Implementation of provider count sensor."""
 
     def __init__(
         self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
