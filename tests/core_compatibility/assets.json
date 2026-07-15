@@ -1,0 +1,58 @@
+{
+  "clash": {
+    "version": "v1.18.0",
+    "source": "Kuingsmile/clash-core backup (the original Dreamacro release is no longer available)",
+    "platforms": {
+      "darwin-arm64": {
+        "url": "https://github.com/Kuingsmile/clash-core/releases/download/1.18/clash-darwin-arm64-v1.18.0.gz",
+        "sha256": "d352f6c20909def4b0052beee77b507b67362a6c59128d04bb47882d8bfb364f"
+      },
+      "linux-amd64": {
+        "url": "https://github.com/Kuingsmile/clash-core/releases/download/1.18/clash-linux-amd64-v1.18.0.gz",
+        "sha256": "63e3235ae893dc28a08c85d905a2db6beda8c7e3490fe2c5e9635361c6414c4c"
+      }
+    }
+  },
+  "clash_premium": {
+    "version": "2023.08.17",
+    "source": "Kuingsmile/clash-core backup (the original Dreamacro release is no longer available)",
+    "platforms": {
+      "darwin-arm64": {
+        "url": "https://github.com/Kuingsmile/clash-core/releases/download/premium/clash-darwin-arm64-2023.08.17.gz",
+        "sha256": "ce2efc656fbd1b622005fd40d758faa1fcd4e61940469f8600da2a24b7c378f6"
+      },
+      "linux-amd64": {
+        "url": "https://github.com/Kuingsmile/clash-core/releases/download/premium/clash-linux-amd64-2023.08.17.gz",
+        "sha256": "0355a3f10dc1b44c349c25ab6bfc25b427f0d735a14521cf4b9027c90e3131a6"
+      }
+    }
+  },
+  "clash_meta": {
+    "version": "v1.16.0",
+    "source": "MetaCubeX/mihomo official legacy Clash.Meta release",
+    "platforms": {
+      "darwin-arm64": {
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.16.0/clash.meta-darwin-arm64-v1.16.0.gz",
+        "sha256": "687eb402033dcf25c3040e0357c27acb54e8f0531e86bbea7fb45b32e218fa51"
+      },
+      "linux-amd64": {
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.16.0/clash.meta-linux-amd64-v1.16.0.gz",
+        "sha256": "4b5a976b1eaaab3b476a8dbd5b2d3972b937ba9f4901b8d94787594c0fda84ce"
+      }
+    }
+  },
+  "mihomo": {
+    "version": "v1.19.28",
+    "source": "MetaCubeX/mihomo official release",
+    "platforms": {
+      "darwin-arm64": {
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-darwin-arm64-v1.19.28.gz",
+        "sha256": "40cdae2fab4b18df15f40eaa9dc3af70ab3d8be7f77164ae1e5f1af3a2a4fb44"
+      },
+      "linux-amd64": {
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-linux-amd64-compatible-v1.19.28.gz",
+        "sha256": "70d01cfb8cb7bf7a92fd1af16cb4b9553d90bb4eecde3b5c4849103e27c80ddb"
+      }
+    }
+  }
+}

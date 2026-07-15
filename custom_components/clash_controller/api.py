@@ -193,12 +193,16 @@ class ClashAPI:
             await self._establish_session()
 
         ws_url = self._build_ws_url(endpoint)
+        ws_timeout: Any = timeout
+        client_ws_timeout = getattr(aiohttp, "ClientWSTimeout", None)
+        if client_ws_timeout is not None:
+            ws_timeout = client_ws_timeout(ws_receive=timeout, ws_close=timeout)
         try:
             async with self._session.ws_connect(
                 ws_url,
                 headers=self._ws_headers(),
                 heartbeat=30,
-                timeout=timeout,
+                timeout=ws_timeout,
             ) as websocket:
                 message = await websocket.receive(timeout=timeout)
                 if message.type == aiohttp.WSMsgType.TEXT:
