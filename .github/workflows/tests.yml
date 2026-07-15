@@ -26,3 +26,41 @@ jobs:
 
       - name: Run tests
         run: pytest -q -c tests/pytest.ini tests
+
+  core-compatibility:
+    name: Core compatibility (${{ matrix.core }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        core: [clash, clash_premium, clash_meta, mihomo]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Cache test core
+        uses: actions/cache@v4
+        with:
+          path: .cache/core-compatibility
+          key: core-compatibility-${{ runner.os }}-${{ runner.arch }}-${{ matrix.core }}-${{ hashFiles('tests/core_compatibility/assets.json') }}
+
+      - name: Install real-core test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/core_compatibility/requirements.txt
+
+      - name: Download verified core binary
+        id: core
+        run: echo "binary=$(python tests/core_compatibility/download_core.py '${{ matrix.core }}')" >> "$GITHUB_OUTPUT"
+
+      - name: Run real-core compatibility tests
+        env:
+          CLASH_CORE_BINARY: ${{ steps.core.outputs.binary }}
+          CLASH_CORE_NAME: ${{ matrix.core }}
+        run: pytest -p no:homeassistant -q -c tests/pytest.ini -m core_integration tests/core_compatibility/test_live_core.py

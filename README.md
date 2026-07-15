@@ -19,12 +19,17 @@ Known working clients: Nikki, OpenClash, ShellClash and MerlinClash.
 
 Core support:
 
-| Core Name       | Supported | Tested Version |
-|-----------------|-----------|----------------|
-| Clash           | Partially | v0.18.0        |
-| Clash Premium   | Partially | 2023.08.17     |
-| Clash Meta      | Partially | ```N/A```      |
-| Mihomo          | Yes       | v1.19.18       |
+| Core Name       | Supported | Tested Version | Status |
+|-----------------|-----------|----------------|--------|
+| Clash           | Partially | v1.18.0        | End of life |
+| Clash Premium   | Partially | 2023.08.17     | End of life |
+| Clash Meta      | Partially | v1.16.0        | Legacy predecessor of Mihomo |
+| Mihomo          | Yes       | v1.19.28       | Actively maintained |
+
+These versions are exercised against real core binaries in CI. The binaries are
+downloaded into a local cache, verified by SHA-256, and are not committed to this
+repository. See [the core compatibility test documentation](tests/core_compatibility/README.md)
+for provenance and local test commands.
 
 ## Installation
 
