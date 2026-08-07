@@ -1,14 +1,15 @@
 """Base entity for Clash Controller."""
 
+from __future__ import annotations
 import logging
-
+from typing import TYPE_CHECKING
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import ClashControllerCoordinator, ClashEntityData
+if TYPE_CHECKING:
+    from .coordinator import ClashControllerCoordinator, ClashEntityData
 
 _LOGGER = logging.getLogger(__name__)
-
 
 class BaseEntity(CoordinatorEntity):
     """Base entity class."""
@@ -66,4 +67,3 @@ class BaseEntity(CoordinatorEntity):
     def translation_key(self):
         """Return translation key with backward-compatible behavior."""
         return self.entity_data.translation_key
-

@@ -12,6 +12,7 @@ import ssl
 import time
 
 import aiohttp
+from homeassistant.helpers.aiohttp_client import async_get_clientsession, async_create_clientsession
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +30,6 @@ SERVICE_TABLE = {
     },
 }
 
-
 class ClashAPI:
     """A utility class to interact with the Clash API."""
 
@@ -38,8 +38,10 @@ class ClashAPI:
 
     def __init__(
         self,
+        hass: HomeAssistant,
         host: str,
         token: str,
+        entry_id: str,
         allow_unsafe: bool = False,
         available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = None,
         capabilities: Optional[dict[str, bool]] = None,
@@ -48,18 +50,15 @@ class ClashAPI:
         self.host = host
         self.token = token
         self.allow_unsafe = allow_unsafe
-        self.device_id = (
-            re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_"))
-            + "_device"
-        )
-        self._session: Optional[aiohttp.ClientSession] = None
-        self._status_session: Optional[aiohttp.ClientSession] = None
-        self._available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = (
-            available_endpoints
-        )
-        self._capabilities: Optional[dict[str, bool]] = (
-            dict(capabilities) if capabilities else None
-        )
+        self.device_id = entry_id 
+        if allow_unsafe:
+            self._session = async_create_clientsession(hass, verify_ssl=False)
+        else:
+            self._session = async_get_clientsession(hass)
+            
+        self._status_session = async_get_clientsession(hass)
+        self._available_endpoints = available_endpoints
+        self._capabilities = dict(capabilities) if capabilities else None
 
     @property
     def available_endpoints(self) -> Optional[list[tuple[str, dict[str, Any]]]]:
@@ -139,14 +138,16 @@ class ClashAPI:
             if read_line < 1:
                 return await response.json()
             line_counter = 0
-            async for line in response.content:
-                line_counter += 1
-                if line_counter == read_line:
-                    return json.loads(line.decode("utf-8").strip())
+            try:
+                async with asyncio.timeout(3.0):
+                    async for line in response.content:
+                        line_counter += 1
+                        if line_counter == read_line:
+                            return json.loads(line.decode("utf-8").strip())
+            except (asyncio.TimeoutError, TimeoutError):
+                _LOGGER.debug("端点 %s 读取超时（Clash 暂无流量），跳过采样", endpoint)
+                return None
             return None
-
-        if self._session is None:
-            await self._establish_session()
 
         url = f"{self.host}{endpoint}"
         _LOGGER.debug("Making %s request to %s, read line: %s.", method, url, read_line)
@@ -158,6 +159,7 @@ class ClashAPI:
                 params=params,
                 json=json_data,
                 headers=self._request_headers(),
+                timeout=aiohttp.ClientTimeout(total=10),
             ) as response:
                 response.raise_for_status()
                 try:
@@ -173,13 +175,10 @@ class ClashAPI:
                 raise APIAuthError("Invalid API credentials.") from err
             raise APIClientError(f"API request got an invalid response: {err}") from err
         except asyncio.TimeoutError as err:
-            await self.close_session()
             raise APITimeoutError(f"API request timed out: {err}") from err
         except aiohttp.ClientConnectionError as err:
-            await self.close_session()
             raise APIConnectionError(f"API request connection error: {err}") from err
         except Exception as err:
-            await self.close_session()
             raise APIClientError(f"API request generic failure: {err}") from err
 
     async def async_ws_request(
@@ -198,22 +197,23 @@ class ClashAPI:
         if client_ws_timeout is not None:
             ws_timeout = client_ws_timeout(ws_receive=timeout, ws_close=timeout)
         try:
-            async with self._session.ws_connect(
-                ws_url,
-                headers=self._ws_headers(),
-                heartbeat=30,
-                timeout=ws_timeout,
-            ) as websocket:
-                message = await websocket.receive(timeout=timeout)
-                if message.type == aiohttp.WSMsgType.TEXT:
-                    payload = json.loads(message.data.strip())
-                    return payload if isinstance(payload, dict) else {}
-                if message.type == aiohttp.WSMsgType.BINARY:
-                    payload = json.loads(message.data.decode("utf-8").strip())
-                    return payload if isinstance(payload, dict) else {}
-                raise APIClientError(
-                    f"Unexpected websocket message type for {endpoint}: {message.type}"
-                )
+            async with asyncio.timeout(5.0):
+                async with self._session.ws_connect(
+                    ws_url,
+                    headers=self._ws_headers(),
+                    heartbeat=30,
+                    timeout=ws_timeout,
+                ) as websocket:
+                    message = await websocket.receive(timeout=timeout)
+                    if message.type == aiohttp.WSMsgType.TEXT:
+                        payload = json.loads(message.data.strip())
+                        return payload if isinstance(payload, dict) else {}
+                    if message.type == aiohttp.WSMsgType.BINARY:
+                        payload = json.loads(message.data.decode("utf-8").strip())
+                        return payload if isinstance(payload, dict) else {}
+                    raise APIClientError(
+                        f"Unexpected websocket message type for {endpoint}: {message.type}"
+                    )
         except Exception:
             if suppress_errors:
                 return {}
@@ -722,18 +722,18 @@ class ClashAPI:
 
         return data
 
+    async def close_session(self):
+        """Session is now managed by Home Assistant core."""
+        pass
 
 class APIAuthError(Exception):
     """Exception class for auth error."""
 
-
 class APIClientError(Exception):
     """Exception class for generic client error."""
 
-
 class APITimeoutError(Exception):
     """Exception class for timeout error."""
-
 
 class APIConnectionError(Exception):
     """Exception class for connection error."""

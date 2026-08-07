@@ -1,28 +1,32 @@
 """Constants for the Clash Controller."""
+from __future__ import annotations
+
+from homeassistant.const import Platform
 
 DOMAIN = "clash_controller"
 
-# Configs
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.SELECT,
+    Platform.BUTTON,
+]
 
+# Configs
 CONF_API_URL = "api_url"
 CONF_BEAR_TOKEN = "bearer_token"
 CONF_USE_SSL = "use_ssl"
 CONF_ALLOW_UNSAFE = "allow_unsafe"
 
 # Options
-
 MIN_SCAN_INTERVAL = 10
 DEFAULT_SCAN_INTERVAL = 60
-
 MIN_CONCURRENT_CONNECTIONS = 1
 DEFAULT_CONCURRENT_CONNECTIONS = 5
 CONF_CONCURRENT_CONNECTIONS = "concurrent_connections"
-
 CONF_STREAMING_DETECTION = "streaming_detection"
 DEFAULT_STREAMING_DETECTION = False
 
 # Service names
-
 API_CALL_SERVICE_NAME = "api_call_service"
 DNS_QUERY_SERVICE_NAME = "dns_query_service"
 FILTER_CONNECTION_SERVICE_NAME = "filter_connection_service"

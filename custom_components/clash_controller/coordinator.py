@@ -40,11 +40,9 @@ CORE_DATA_KEYS = frozenset(
     }
 )
 
-
 @dataclass(slots=True)
 class ClashEntityData:
     """Structured data model used by entities."""
-
     name: str | None
     entity_type: str
     state: Any = None
@@ -59,7 +57,6 @@ class ClashEntityData:
     unique_key: str | None = None
     unique_id: str = ""
 
-
 class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
     """A coordinator to fetch data from the Clash API."""
 
@@ -71,6 +68,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         self.token = config_entry.data["bearer_token"]
         self.allow_unsafe = config_entry.data["allow_unsafe"]
         self.config_entry = config_entry
+        self.entry_id = config_entry.entry_id
 
         self.poll_interval = config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
@@ -99,8 +97,10 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             dict(stored_capabilities) if isinstance(stored_capabilities, dict) else None
         )
         self.api = ClashAPI(
+            hass,
             host=self.host,
             token=self.token,
+            entry_id=self.entry_id,
             allow_unsafe=self.allow_unsafe,
             available_endpoints=available_endpoints,
             capabilities=capabilities,
@@ -123,7 +123,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             "manufacturer": manufacturer,
             "model": model,
             "sw_version": version_info.get("version"),
-            "identifiers": {(DOMAIN, self.api.device_id)},
+            "identifiers": {(DOMAIN, self.entry_id)},
+            "configuration_url": self.host,
         }
         try:
             return DeviceInfo(
@@ -142,10 +143,12 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         _LOGGER.debug("Start fetching data from Clash.")
 
         try:
+            _LOGGER.debug("API Host: %s, Capabilities: %s", self.api.host, self.api.capabilities)
             response = await self.api.fetch_data(
                 streaming_detection=self.streaming_detection,
-                suppress_errors=True,
+                suppress_errors=False,
             )
+            _LOGGER.debug("Clash API Response Data: %s", response)
             if not CORE_DATA_KEYS.intersection(response):
                 raise UpdateFailed("No data returned from Clash core.")
             if not self.device:
@@ -200,6 +203,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         if capabilities.get("cache_dns_flush"):
             entity_data.append(self._build_dns_flush_button())
 
+        new_data_by_unique_id = {}
+        new_data_by_name = {}
+
         for item in entity_data:
             id_source = (
                 item.unique_key
@@ -208,16 +214,18 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 or item.entity_type
             )
             item.unique_id = (
-                f"{self.api.device_id}"
+                f"{self.entry_id}"
                 f"_{item.entity_type}"
                 f"_{id_source.lower().replace(' ', '_')}"
             )
 
-        self._data_by_name = {}
-        for item in entity_data:
-            if item.name and item.name not in self._data_by_name:
-                self._data_by_name[item.name] = item
-        self._data_by_unique_id = {item.unique_id: item for item in entity_data}
+            new_data_by_unique_id[item.unique_id] = item
+            if item.name:
+                new_data_by_name[item.name] = item
+
+        self._data_by_unique_id = new_data_by_unique_id
+        self._data_by_name = new_data_by_name
+        
         return entity_data
 
     @staticmethod
@@ -233,7 +241,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 entity_type="traffic_sensor",
                 icon="mdi:arrow-up",
                 translation_key="up_speed",
-                unique_key="upload_speed",
+                unique_key="up_speed",
             ),
             ClashEntityData(
                 name=None,
@@ -241,7 +249,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 entity_type="traffic_sensor",
                 icon="mdi:arrow-down",
                 translation_key="down_speed",
-                unique_key="download_speed",
+                unique_key="down_speed",
             ),
         ]
 
@@ -260,7 +268,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 entity_type="total_traffic_sensor",
                 icon="mdi:tray-arrow-up",
                 translation_key="up_traffic",
-                unique_key="upload_traffic",
+                unique_key="up_traffic",
             ),
             ClashEntityData(
                 name=None,
@@ -268,7 +276,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 entity_type="total_traffic_sensor",
                 icon="mdi:tray-arrow-down",
                 translation_key="down_traffic",
-                unique_key="download_traffic",
+                unique_key="down_traffic",
             ),
             ClashEntityData(
                 name=None,
@@ -532,9 +540,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         return entity_data
 
     def get_data_by_name(self, name: str) -> ClashEntityData | None:
-        """Retrieve data by name."""
+        """Retrieve data by name with O(1) performance."""
         return self._data_by_name.get(name)
 
     def get_data_by_unique_id(self, unique_id: str) -> ClashEntityData | None:
-        """Retrieve data by unique ID."""
+        """Retrieve data by unique ID with O(1) performance."""
         return self._data_by_unique_id.get(unique_id)
