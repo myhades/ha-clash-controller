@@ -72,9 +72,10 @@ class ClashSelectBase(BaseEntity, SelectEntity):
         entity_data: ClashEntityData,
         description: ClashSelectDescription
     ) -> None:
-        super().__init__(coordinator, entity_data)
         self.entity_description = description
-
+        self._attr_translation_key = description.translation_key
+        super().__init__(coordinator, entity_data)
+        
     @property
     def current_option(self) -> str | None:
         """从 entity_data 映射状态。"""
@@ -114,8 +115,6 @@ class ClashCoreModeSelect(ClashSelectBase):
 
     def __init__(self, coordinator, entity_data, description) -> None:
         super().__init__(coordinator, entity_data, description)
-
-        self._attr_name = None
 
     async def async_select_option(self, option: str) -> None:
         """执行核心模式切换（PATCH -> PUT 回退逻辑）。"""
