@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+import asyncio
 import importlib.util
 import os
 from pathlib import Path
@@ -15,6 +16,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 import pytest
+import yaml
 
 API_PATH = (
     Path(__file__).resolve().parents[2]
@@ -29,18 +31,45 @@ API_SPEC.loader.exec_module(API_MODULE)
 APIAuthError = API_MODULE.APIAuthError
 ClashAPI = API_MODULE.ClashAPI
 
-pytestmark = pytest.mark.core_integration
+pytestmark = [pytest.mark.system, pytest.mark.enable_socket]
 
 SECRET = "ha-clash-controller-test-secret"
 
 
-@dataclass(frozen=True)
+@dataclass
 class RunningCore:
-    """Details for a core process started by the test suite."""
+    """Controllable Clash-compatible core used by the system test suite."""
 
     name: str
     url: str
+    proxy_url: str
+    binary: Path
+    work_dir: Path
+    config_path: Path
     process: subprocess.Popen[str]
+
+    def stop(self) -> None:
+        """Stop the core without discarding its test configuration."""
+        if self.process.poll() is not None:
+            return
+        self.process.terminate()
+        try:
+            self.process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait(timeout=5)
+
+    def start(self) -> None:
+        """Start the core again on the same ports and configuration."""
+        if self.process.poll() is None:
+            return
+        self.process = _start_process(self.binary, self.work_dir, self.config_path)
+        _wait_until_ready(self.process, self.url)
+
+    def restart(self) -> None:
+        """Restart the core on the same controller URL."""
+        self.stop()
+        self.start()
 
 
 def _free_port() -> int:
@@ -57,9 +86,8 @@ def _wait_until_ready(process: subprocess.Popen[str], url: str) -> None:
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         if process.poll() is not None:
-            stdout, _ = process.communicate()
             raise RuntimeError(
-                f"Core exited with status {process.returncode} before startup:\n{stdout}"
+                f"Core exited with status {process.returncode} before startup"
             )
         try:
             with urlopen(request, timeout=1) as response:
@@ -68,6 +96,84 @@ def _wait_until_ready(process: subprocess.Popen[str], url: str) -> None:
         except (HTTPError, URLError, TimeoutError):
             time.sleep(0.1)
     raise TimeoutError(f"Core did not expose {url}version within 20 seconds")
+
+
+def _start_process(
+    binary: Path, work_dir: Path, config_path: Path
+) -> subprocess.Popen[str]:
+    """Start one core process."""
+    return subprocess.Popen(
+        (str(binary), "-d", str(work_dir), "-f", str(config_path)),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+
+
+def create_running_core(
+    binary: Path, core_name: str, work_dir: Path
+) -> RunningCore:
+    """Create and start a core in a caller-owned temporary directory."""
+    work_dir.mkdir(parents=True, exist_ok=True)
+    controller_port = _free_port()
+    proxy_port = _free_port()
+    config_path = work_dir / "config.yaml"
+    source_value = os.environ.get("CLASH_TEST_CONFIG")
+    if source_value:
+        source = Path(source_value).expanduser().resolve()
+        loaded = yaml.safe_load(source.read_text(encoding="utf-8"))
+        if not isinstance(loaded, dict):
+            raise ValueError(f"Test config must contain a YAML mapping: {source}")
+        config = loaded
+    else:
+        config = {
+            "mode": "rule",
+            "proxies": [],
+            "proxy-groups": [],
+            "rules": ["DOMAIN,example.com,DIRECT", "MATCH,DIRECT"],
+        }
+
+    groups = config.setdefault("proxy-groups", [])
+    if not any(
+        isinstance(group, dict) and group.get("name") == "HA Compatibility Test"
+        for group in groups
+    ):
+        groups.append(
+            {
+                "name": "HA Compatibility Test",
+                "type": "select",
+                "proxies": ["DIRECT", "REJECT"],
+            }
+        )
+    config.update(
+        {
+            "port": proxy_port,
+            "allow-lan": False,
+            "log-level": "silent",
+            "external-controller": f"127.0.0.1:{controller_port}",
+            "secret": SECRET,
+        }
+    )
+    config_path.write_text(
+        yaml.safe_dump(config, sort_keys=False, allow_unicode=True), encoding="utf-8"
+    )
+    process = _start_process(binary, work_dir, config_path)
+    url = f"http://127.0.0.1:{controller_port}/"
+    core = RunningCore(
+        core_name,
+        url,
+        f"http://127.0.0.1:{proxy_port}",
+        binary,
+        work_dir,
+        config_path,
+        process,
+    )
+    try:
+        _wait_until_ready(process, url)
+    except Exception:
+        core.stop()
+        raise
+    return core
 
 
 @pytest.fixture(scope="module")
@@ -82,53 +188,12 @@ def running_core(tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningCo
         pytest.fail(f"CLASH_CORE_BINARY does not exist: {binary}")
 
     core_name = os.environ.get("CLASH_CORE_NAME", binary.name)
-    controller_port = _free_port()
-    proxy_port = _free_port()
     work_dir = tmp_path_factory.mktemp(f"core-{core_name}")
-    config_path = work_dir / "config.yaml"
-    config_path.write_text(
-        "\n".join(
-            (
-                f"port: {proxy_port}",
-                "allow-lan: false",
-                "mode: rule",
-                "log-level: silent",
-                f"external-controller: 127.0.0.1:{controller_port}",
-                f"secret: {SECRET}",
-                "proxies: []",
-                "proxy-groups:",
-                "  - name: HA Compatibility Test",
-                "    type: select",
-                "    proxies:",
-                "      - DIRECT",
-                "      - REJECT",
-                "rules:",
-                "  - DOMAIN,example.com,DIRECT",
-                "  - MATCH,DIRECT",
-                "",
-            )
-        ),
-        encoding="utf-8",
-    )
-
-    process = subprocess.Popen(
-        (str(binary), "-d", str(work_dir), "-f", str(config_path)),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    url = f"http://127.0.0.1:{controller_port}/"
+    core = create_running_core(binary, core_name, work_dir)
     try:
-        _wait_until_ready(process, url)
-        yield RunningCore(core_name, url, process)
+        yield core
     finally:
-        if process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
+        core.stop()
 
 
 @pytest.mark.asyncio
@@ -184,6 +249,7 @@ async def test_detects_and_reads_supported_endpoints(running_core: RunningCore) 
 
     finally:
         await api.close_session()
+        await asyncio.sleep(0)
 
 
 @pytest.mark.asyncio
