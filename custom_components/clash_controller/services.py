@@ -170,7 +170,7 @@ class ClashServicesSetup:
         device = dev_reg.async_get(device_id)
         if not device:
             raise HomeAssistantError("Invalid device id.")
-        config_entry_id = next(iter(device.config_entries), None)
+        config_entry_id = device.config_entry_id
         if not config_entry_id:
             raise HomeAssistantError("Invalid device id.")
         runtime_data = self.hass.data.get(DOMAIN, {}).get(config_entry_id)
@@ -394,5 +394,4 @@ class ClashServicesSetup:
             raise HomeAssistantError(f"Error performing API call: {err}") from err
         
         return {"response": response}
-
 

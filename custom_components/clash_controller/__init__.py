@@ -46,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         await coordinator.async_config_entry_first_refresh()
     except ConfigEntryNotReady as err:
         if not setup_done:
+            await coordinator.api.close_session()
             raise err
         _LOGGER.warning(err)
         coordinator.data = coordinator.data or []
