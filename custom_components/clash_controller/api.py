@@ -54,6 +54,8 @@ class ClashAPI:
         )
         self._session: Optional[aiohttp.ClientSession] = None
         self._status_session: Optional[aiohttp.ClientSession] = None
+        self._session_lock = asyncio.Lock()
+        self._status_session_lock = asyncio.Lock()
         self._available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = (
             available_endpoints
         )
@@ -91,37 +93,43 @@ class ClashAPI:
 
     async def _establish_session(self):
         """Establish a session with given configuration."""
-        ssl_context = None
-        if self.allow_unsafe:
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
+        async with self._session_lock:
+            if self._session is not None and not self._session.closed:
+                return
+            ssl_context = None
+            if self.allow_unsafe:
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
 
-        new_session = None
-        try:
-            new_session = aiohttp.ClientSession(
-                connector=aiohttp.TCPConnector(ssl=ssl_context),
-                timeout=aiohttp.ClientTimeout(total=15),
-            )
-            self._session = new_session
-            _LOGGER.debug("Session created successfully.")
-        except Exception as err:
-            if new_session:
-                await new_session.close()
-            raise APIClientError(f"Error creating HTTP session: {err}") from err
+            new_session = None
+            try:
+                new_session = aiohttp.ClientSession(
+                    connector=aiohttp.TCPConnector(ssl=ssl_context),
+                    timeout=aiohttp.ClientTimeout(total=15),
+                )
+                self._session = new_session
+                _LOGGER.debug("Session created successfully.")
+            except Exception as err:
+                if new_session:
+                    await new_session.close()
+                raise APIClientError(f"Error creating HTTP session: {err}") from err
 
     async def _establish_status_session(self):
         """Establish a dedicated session for third-party URL probes."""
-        new_session = None
-        try:
-            new_session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=10),
-            )
-            self._status_session = new_session
-        except Exception as err:
-            if new_session:
-                await new_session.close()
-            raise APIClientError(f"Error creating status probe session: {err}") from err
+        async with self._status_session_lock:
+            if self._status_session is not None and not self._status_session.closed:
+                return
+            new_session = None
+            try:
+                new_session = aiohttp.ClientSession(
+                    timeout=aiohttp.ClientTimeout(total=10),
+                )
+                self._status_session = new_session
+            except Exception as err:
+                if new_session:
+                    await new_session.close()
+                raise APIClientError(f"Error creating status probe session: {err}") from err
 
     async def _request(
         self,
@@ -201,7 +209,6 @@ class ClashAPI:
             async with self._session.ws_connect(
                 ws_url,
                 headers=self._ws_headers(),
-                heartbeat=30,
                 timeout=ws_timeout,
             ) as websocket:
                 message = await websocket.receive(timeout=timeout)
@@ -374,22 +381,24 @@ class ClashAPI:
 
     async def close_session(self):
         """Safely close sessions."""
-        if self._session is not None:
-            try:
-                await self._session.close()
-                _LOGGER.debug("Session closed successfully.")
-            except Exception as err:
-                _LOGGER.warning(f"Failed to close session: {err}")
-            finally:
-                self._session = None
+        async with self._session_lock:
+            if self._session is not None:
+                try:
+                    await self._session.close()
+                    _LOGGER.debug("Session closed successfully.")
+                except Exception as err:
+                    _LOGGER.warning(f"Failed to close session: {err}")
+                finally:
+                    self._session = None
 
-        if self._status_session is not None:
-            try:
-                await self._status_session.close()
-            except Exception as err:
-                _LOGGER.warning(f"Failed to close status probe session: {err}")
-            finally:
-                self._status_session = None
+        async with self._status_session_lock:
+            if self._status_session is not None:
+                try:
+                    await self._status_session.close()
+                except Exception as err:
+                    _LOGGER.warning(f"Failed to close status probe session: {err}")
+                finally:
+                    self._status_session = None
 
     async def async_request(
         self,
