@@ -52,5 +52,10 @@ class ButtonEntityBase(BaseEntity, ButtonEntity):
         kwargs = action.get("kwargs", {})
         if method is None:
             raise HomeAssistantError("No action defined for this button.")
-        await method(*args, **kwargs)
+        try:
+            await method(*args, **kwargs)
+        except Exception as err:
+            raise HomeAssistantError(
+                f"Failed to execute {self.entity_data.unique_key}."
+            ) from err
         self.async_write_ha_state()
