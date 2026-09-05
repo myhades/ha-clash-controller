@@ -16,6 +16,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 import pytest
+import pytest_socket
 import yaml
 
 API_PATH = (
@@ -179,6 +180,7 @@ def create_running_core(
 @pytest.fixture(scope="module")
 def running_core(tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningCore]:
     """Start the core selected by the CI matrix or local environment."""
+    pytest_socket.enable_socket()
     binary_value = os.environ.get("CLASH_CORE_BINARY")
     if not binary_value:
         pytest.skip("Set CLASH_CORE_BINARY to run real-core compatibility tests")
