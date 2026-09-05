@@ -45,11 +45,14 @@ class BaseEntity(CoordinatorEntity):
         )
         _LOGGER.debug("Entity %s (%s) initialized.", entity_label, self._attr_unique_id)
 
+    @property
+    def available(self) -> bool:
+        """Return whether the coordinator and this endpoint are available."""
+        return self.coordinator.last_update_success and self._attr_available
+
     @callback
     def _handle_coordinator_update(self) -> None:
         new_data = self.coordinator.get_data_by_unique_id(self._entity_unique_id)
-        if (new_data is None) and self._entity_name:
-            new_data = self.coordinator.get_data_by_name(self._entity_name)
         if new_data:
             self.entity_data = new_data
             self._attr_available = True
@@ -66,4 +69,3 @@ class BaseEntity(CoordinatorEntity):
     def translation_key(self):
         """Return translation key with backward-compatible behavior."""
         return self.entity_data.translation_key
-
