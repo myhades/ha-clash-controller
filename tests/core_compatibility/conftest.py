@@ -13,6 +13,12 @@ from .test_live_core import RunningCore
 from .test_live_core import running_core
 
 
+@pytest.fixture(autouse=True)
+def enable_real_core_sockets(socket_enabled: None) -> Iterator[None]:
+    """Enable sockets after Home Assistant's per-test socket guard runs."""
+    yield
+
+
 @pytest.fixture
 def hanging_api_url() -> Iterator[str]:
     """Expose a controller URL which accepts requests but never responds."""
