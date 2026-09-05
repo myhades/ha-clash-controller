@@ -1,0 +1,47 @@
+name: Release validation
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  unit:
+    name: Unit and component tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements.txt
+      - name: Run unit layer
+        run: python tests/run.py unit
+
+  full-system:
+    name: Full system (${{ matrix.core }})
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        core: [clash, clash_premium, clash_meta, mihomo]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Cache test core
+        uses: actions/cache@v4
+        with:
+          path: .cache/core-compatibility
+          key: release-core-${{ runner.os }}-${{ runner.arch }}-${{ matrix.core }}-${{ hashFiles('tests/core_compatibility/assets.json') }}
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements.txt
+      - name: Run full Home Assistant/core validation
+        run: python tests/run.py system --core '${{ matrix.core }}' --full
