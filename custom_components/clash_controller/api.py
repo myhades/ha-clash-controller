@@ -145,7 +145,9 @@ class ClashAPI:
             if response.status == 204:
                 return None
             if read_line < 1:
-                return await response.json()
+                # Some compatible controllers, notably sing-box, return JSON
+                # with a text/plain content type.
+                return await response.json(content_type=None)
             line_counter = 0
             async for line in response.content:
                 line_counter += 1
@@ -205,26 +207,37 @@ class ClashAPI:
         client_ws_timeout = getattr(aiohttp, "ClientWSTimeout", None)
         if client_ws_timeout is not None:
             ws_timeout = client_ws_timeout(ws_receive=timeout, ws_close=timeout)
+        websocket: aiohttp.ClientWebSocketResponse | None = None
         try:
-            async with self._session.ws_connect(
+            websocket = await self._session.ws_connect(
                 ws_url,
                 headers=self._ws_headers(),
                 timeout=ws_timeout,
-            ) as websocket:
-                message = await websocket.receive(timeout=timeout)
-                if message.type == aiohttp.WSMsgType.TEXT:
-                    payload = json.loads(message.data.strip())
-                    return payload if isinstance(payload, dict) else {}
-                if message.type == aiohttp.WSMsgType.BINARY:
-                    payload = json.loads(message.data.decode("utf-8").strip())
-                    return payload if isinstance(payload, dict) else {}
-                raise APIClientError(
-                    f"Unexpected websocket message type for {endpoint}: {message.type}"
-                )
+            )
+            message = await websocket.receive(timeout=timeout)
+            if message.type == aiohttp.WSMsgType.TEXT:
+                payload = json.loads(message.data.strip())
+                return payload if isinstance(payload, dict) else {}
+            if message.type == aiohttp.WSMsgType.BINARY:
+                payload = json.loads(message.data.decode("utf-8").strip())
+                return payload if isinstance(payload, dict) else {}
+            raise APIClientError(
+                f"Unexpected websocket message type for {endpoint}: {message.type}"
+            )
         except Exception:
             if suppress_errors:
                 return {}
             raise
+        finally:
+            if websocket is not None and not websocket.closed:
+                try:
+                    await asyncio.wait_for(websocket.close(), timeout=0.5)
+                except TimeoutError:
+                    # A compatible core may not complete the close handshake.
+                    websocket._response.close()  # noqa: SLF001
+                except asyncio.CancelledError:
+                    websocket._response.close()  # noqa: SLF001
+                    raise
 
     async def _probe_http_endpoint(
         self,
@@ -290,7 +303,8 @@ class ClashAPI:
             "proxies": self._probe_http_endpoint("GET", "proxies"),
             "connections": self._probe_http_endpoint("GET", "connections"),
             "traffic": self._probe_http_endpoint("GET", "traffic", read_line=1),
-            "memory": self._probe_http_endpoint("GET", "memory", read_line=2),
+            "memory_first": self._probe_http_endpoint("GET", "memory", read_line=1),
+            "memory_second": self._probe_http_endpoint("GET", "memory", read_line=2),
             "configs": self._probe_http_endpoint("GET", "configs"),
             "rules": self._probe_http_endpoint("GET", "rules"),
             "group": self._probe_http_endpoint("GET", "group"),
@@ -337,24 +351,27 @@ class ClashAPI:
             for result in ws_results
         )
 
+        memory_first = http_capabilities.pop("memory_first", False)
+        memory_second = http_capabilities.pop("memory_second", False)
         capabilities: dict[str, bool] = dict(http_capabilities)
         capabilities["traffic"] = http_capabilities.get("traffic", False) or ws_traffic
-        capabilities["memory"] = http_capabilities.get("memory", False) or ws_memory
+        capabilities["memory"] = memory_first or memory_second or ws_memory
         capabilities["connections"] = (
             http_capabilities.get("connections", False) or ws_connections
         )
 
         capabilities["group_detail"] = capabilities.get("group", False)
-        capabilities["group_delay"] = capabilities.get("group", False) and capabilities.get(
-            "proxies", False
-        )
+        # A controller can expose group delay without a /group collection.
+        # Groups and their members are discoverable through /proxies.
+        capabilities["group_delay"] = capabilities.get("proxies", False)
         capabilities["proxy_delay"] = capabilities.get("proxies", False)
-        capabilities["provider_healthcheck"] = capabilities.get(
-            "providers_proxies", False
-        )
-        capabilities["provider_proxy_healthcheck"] = capabilities.get(
-            "providers_proxies", False
-        )
+        provider_payload: dict[str, Any] = {}
+        if capabilities.get("providers_proxies"):
+            provider_payload = await self.async_request("GET", "providers/proxies")
+        providers = provider_payload.get("providers", {})
+        has_providers = isinstance(providers, dict) and bool(providers)
+        capabilities["provider_healthcheck"] = has_providers
+        capabilities["provider_proxy_healthcheck"] = has_providers
         capabilities["ws_traffic"] = ws_traffic
         capabilities["ws_memory"] = ws_memory
         capabilities["ws_connections"] = ws_connections
@@ -362,8 +379,10 @@ class ClashAPI:
 
         self._capabilities = capabilities
         self._available_endpoints = []
-        if http_capabilities.get("memory"):
-            self._available_endpoints.append(("memory", {"read_line": 2}))
+        if memory_first or memory_second:
+            self._available_endpoints.append(
+                ("memory", {"read_line": 2 if memory_second else 1})
+            )
         if http_capabilities.get("traffic"):
             self._available_endpoints.append(("traffic", {"read_line": 1}))
         if http_capabilities.get("connections"):
@@ -485,46 +504,46 @@ class ClashAPI:
         return True
 
     @staticmethod
-    def _parse_semver(version: str) -> tuple[int, int, int] | None:
-        match = re.search(r"(?:v)?(\d+)\.(\d+)\.(\d+)", version)
-        if not match:
-            return None
-        return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    def _infer_core_model(
+        response: dict[str, Any],
+        hello: dict[str, Any] | None = None,
+    ) -> str:
+        """Return a conservative display name without driving behavior."""
+        reported_values = [
+            response.get("name"),
+            response.get("core"),
+            response.get("product"),
+            response.get("version"),
+        ]
+        reported = " ".join(
+            value.strip()
+            for value in reported_values
+            if isinstance(value, str) and value.strip()
+        )
+        lowered = reported.lower()
 
-    @classmethod
-    def _infer_core_model(cls, response: dict[str, Any]) -> str:
-        reported_name = response.get("name") or response.get("core") or response.get("product")
-        if isinstance(reported_name, str) and reported_name.strip():
-            normalized = reported_name.strip()
-            lowered = normalized.lower()
-            if "mihomo" in lowered:
-                return "Mihomo"
-            if "clash.meta" in lowered or ("meta" in lowered and "mihomo" not in lowered):
-                return "Clash Meta"
-            if "clash" in lowered:
-                return "Clash"
-            return normalized
-
-        is_meta = response.get("meta") is True
-        version = str(response.get("version", "")).strip()
-        lowered_version = version.lower()
-        if not is_meta:
-            return "Clash Compatible Core"
-        if "mihomo" in lowered_version:
+        if "sing-box" in lowered:
+            return "sing-box"
+        if "clash-rs" in lowered or (hello or {}).get("hello") == "clash-rs":
+            return "clash-rs"
+        if "mihomo" in lowered:
             return "Mihomo"
-        if "clash.meta" in lowered_version:
+        if "clash.meta" in lowered:
             return "Clash Meta"
-        parsed_version = cls._parse_semver(lowered_version)
-        if parsed_version:
-            # Clash.Meta ended before mihomo took over; newer semver lines are mihomo.
-            return "Mihomo" if parsed_version >= (1, 17, 0) else "Clash Meta"
-        return "Meta Core"
+        if response.get("premium") is True and response.get("meta") is not True:
+            return "Clash Premium"
+        if response.get("meta") is True:
+            return "Meta-compatible core"
+        return "Clash-compatible core"
 
     async def get_version(self) -> dict[str, str]:
         """Get normalized core version data."""
         response = await self.async_request("GET", "version")
         is_meta = response.get("meta") is True
         model = self._infer_core_model(response)
+        if model == "Clash-compatible core":
+            hello = await self.async_request("GET", "")
+            model = self._infer_core_model(response, hello)
         return {
             "meta": "Meta Core" if is_meta else "Non-Meta Core",
             "model": model,
