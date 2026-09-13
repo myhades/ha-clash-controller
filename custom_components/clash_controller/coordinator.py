@@ -472,7 +472,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 if not isinstance(test_url, str) or not test_url.strip():
                     test_url = health_check_config.get("url")
                 if not isinstance(test_url, str) or not test_url.strip():
-                    test_url = "http://www.gstatic.com/generate_204"
+                    test_url = "https://www.gstatic.com/generate_204"
 
                 timeout_value = health_check_config.get("timeout")
                 if timeout_value is None:

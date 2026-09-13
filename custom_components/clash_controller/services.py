@@ -178,11 +178,24 @@ class ClashServicesSetup:
             raise HomeAssistantError("Invalid device id.")
         return runtime_data.coordinator
 
+    @staticmethod
+    def _require_capability(
+        coordinator: ClashControllerCoordinator,
+        capability: str,
+        action: str,
+    ) -> None:
+        capabilities = coordinator.api.capabilities or {}
+        if not capabilities.get(capability, False):
+            raise HomeAssistantError(
+                f"{action} is not supported by the selected core."
+            )
+
     async def async_reboot_core_service(self, service_call: ServiceCall) -> None:
         """Execute service call for rebooting core."""
 
         coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
-        
+        self._require_capability(coordinator, "restart", "Core restart")
+
         try:
             await coordinator.api.async_request("POST", "restart", suppress_errors=False)
         except Exception as err:
@@ -277,11 +290,14 @@ class ClashServicesSetup:
         
         group = service_call.data.get(GROUP_NAME, "").strip()
         node = service_call.data.get(NODE_NAME, "").strip()
-        url = service_call.data.get(TEST_URL, "http://www.gstatic.com/generate_204")
-        timeout = service_call.data.get(TEST_TIMEOUT, 5000)
-        
         if bool(group) ^ bool(node) is False:
             raise HomeAssistantError("Exactly one of the group or node should be provided.")
+
+        capability = "group_delay" if group else "proxy_delay"
+        self._require_capability(coordinator, capability, "Latency testing")
+
+        url = service_call.data.get(TEST_URL, "https://www.gstatic.com/generate_204")
+        timeout = service_call.data.get(TEST_TIMEOUT, 5000)
 
         try:
             response = await coordinator.api.async_request(
@@ -394,4 +410,3 @@ class ClashServicesSetup:
             raise HomeAssistantError(f"Error performing API call: {err}") from err
         
         return {"response": response}
-

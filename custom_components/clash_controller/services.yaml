@@ -53,8 +53,8 @@ get_latency_service:
       selector:
         text:
     url:
-      example: "http://www.gstatic.com/generate_204"
-      default: "http://www.gstatic.com/generate_204"
+      example: "https://www.gstatic.com/generate_204"
+      default: "https://www.gstatic.com/generate_204"
       required: false
       selector:
         text:
