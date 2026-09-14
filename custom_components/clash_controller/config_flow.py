@@ -101,7 +101,6 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 session=async_get_clientsession(
                     self.hass, verify_ssl=not allow_unsafe
                 ),
-                status_session=async_get_clientsession(self.hass),
             )
 
             await self._set_unique_id(api_url)
@@ -158,7 +157,6 @@ class ClashControllerOptionsFlow(OptionsFlow):
                     session=async_get_clientsession(
                         self.hass, verify_ssl=not allow_unsafe
                     ),
-                    status_session=async_get_clientsession(self.hass),
                 )
                 errors = await _test_connection(api)
                 await api.async_close()

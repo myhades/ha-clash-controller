@@ -24,7 +24,6 @@ from .api import (
     APIConnectionError,
     ClashAPI,
     FetchResult,
-    SERVICE_TABLE,
 )
 from .const import (
     DOMAIN,
@@ -34,6 +33,7 @@ from .const import (
     CONF_CONCURRENT_CONNECTIONS,
     CONF_STREAMING_DETECTION,
 )
+from .streaming import SERVICE_TABLE, StreamingDetector
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_HEALTHCHECK_TIMEOUT_MS = 5000
@@ -114,8 +114,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             available_endpoints=available_endpoints,
             capabilities=capabilities,
             session=async_get_clientsession(hass, verify_ssl=not self.allow_unsafe),
-            status_session=async_get_clientsession(hass),
         )
+        self.streaming_detector = StreamingDetector(async_get_clientsession(hass))
         self._data_by_name: dict[str, ClashEntityData] = {}
         self._data_by_unique_id: dict[str, ClashEntityData] = {}
         _LOGGER.debug(f"Clash API initialized for coordinator {self.name}")
@@ -167,10 +167,12 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         _LOGGER.debug("Start fetching data from Clash.")
 
         try:
-            result = await self.api.fetch_data(
-                streaming_detection=self.streaming_detection,
-            )
+            result = await self.api.fetch_data()
             response = result.data if isinstance(result, FetchResult) else result
+            if self.streaming_detection:
+                response["streaming"] = (
+                    await self.streaming_detector.async_fetch_data()
+                )
             if not CORE_DATA_KEYS.intersection(response):
                 if isinstance(result, FetchResult) and result.errors:
                     raise UpdateFailed(next(iter(result.errors.values())))

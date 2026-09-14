@@ -9,25 +9,10 @@ import json
 import logging
 import re
 import ssl
-import time
 
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
-
-SERVICE_TABLE = {
-    "netflix": {
-        "name": "Netflix",
-        "icon": "mdi:netflix",
-        "url": "https://www.netflix.com/title/81280792",
-        "code_table": {
-            200: "unlocked",
-            403: "blocked",
-            404: "original_only",
-            000: "unavailable",
-        },
-    },
-}
 
 POLLING_CAPABILITY_KEYS = (
     "proxies",
@@ -91,7 +76,6 @@ class ClashAPI:
         available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = None,
         capabilities: Optional[dict[str, bool]] = None,
         session: aiohttp.ClientSession | None = None,
-        status_session: aiohttp.ClientSession | None = None,
     ):
         """Initialize the ClashAPI instance."""
         self.host = host
@@ -102,11 +86,8 @@ class ClashAPI:
             + "_device"
         )
         self._session = session
-        self._status_session = status_session
         self._owns_session = session is None
-        self._owns_status_session = status_session is None
         self._session_lock = asyncio.Lock()
-        self._status_session_lock = asyncio.Lock()
         self._available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = (
             available_endpoints
         )
@@ -173,22 +154,6 @@ class ClashAPI:
                 if new_session:
                     await new_session.close()
                 raise APIClientError(f"Error creating HTTP session: {err}") from err
-
-    async def _establish_status_session(self):
-        """Establish a dedicated session for third-party URL probes."""
-        async with self._status_session_lock:
-            if self._status_session is not None and not self._status_session.closed:
-                return
-            new_session = None
-            try:
-                new_session = aiohttp.ClientSession(
-                    timeout=aiohttp.ClientTimeout(total=10),
-                )
-                self._status_session = new_session
-            except Exception as err:
-                if new_session:
-                    await new_session.close()
-                raise APIClientError(f"Error creating status probe session: {err}") from err
 
     async def _request(
         self,
@@ -601,15 +566,6 @@ class ClashAPI:
                 finally:
                     self._session = None
 
-        async with self._status_session_lock:
-            if self._owns_status_session and self._status_session is not None:
-                try:
-                    await self._status_session.close()
-                except Exception as err:
-                    _LOGGER.warning("Failed to close status probe session: %s", err)
-                finally:
-                    self._status_session = None
-
     async def close_session(self) -> None:
         """Close owned sessions for backward compatibility."""
         await self.async_close()
@@ -691,39 +647,6 @@ class ClashAPI:
             "version": response.get("version", "unknown"),
         }
 
-    async def get_url_status(
-        self, url: str, headers: dict[str, str] | None = None
-    ) -> dict[str, float | int]:
-        """Get the status code and latency to a third-party URL."""
-        try:
-            if self._status_session is None:
-                await self._establish_status_session()
-            elif self._status_session.closed:
-                raise APIClientError("Status probe session is closed")
-        except Exception as err:
-            _LOGGER.debug("Error creating status probe session: %s", err)
-            return {"latency": -1, "status_code": 000}
-
-        request_headers = headers or {}
-        start_time = time.monotonic()
-        try:
-            async with self._status_session.get(
-                url,
-                headers=request_headers,
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as response:
-                duration = time.monotonic() - start_time
-                return {"latency": duration, "status_code": response.status}
-        except asyncio.TimeoutError:
-            return {"latency": -1, "status_code": 000}
-        except aiohttp.ClientError as err:
-            duration = time.monotonic() - start_time
-            _LOGGER.debug("Error getting status code for %s: %s", url, err)
-            return {"latency": duration, "status_code": 000}
-        except Exception as err:
-            _LOGGER.error(f"Error getting status code for {url}: {err}")
-            return {"latency": -1, "status_code": 000}
-
     async def async_detect_available_endpoints(self) -> list[tuple[str, dict[str, Any]]]:
         """Backward-compatible wrapper for old startup flow."""
         await self.async_detect_capabilities()
@@ -792,21 +715,8 @@ class ClashAPI:
             raise last_error
         raise APIClientError(f"No supported transport for {endpoint}")
 
-    async def fetch_data(
-        self,
-        streaming_detection: bool = False,
-    ) -> FetchResult:
+    async def fetch_data(self) -> FetchResult:
         """Get all endpoint data needed by the coordinator."""
-
-        async def fetch_streaming_service_data():
-            results = await asyncio.gather(
-                *[
-                    self.get_url_status(details["url"])
-                    for details in SERVICE_TABLE.values()
-                ],
-                return_exceptions=True,
-            )
-            return dict(zip((service for service in SERVICE_TABLE), results))
 
         capabilities = await self.async_detect_capabilities()
         read_line_map = {
@@ -915,11 +825,6 @@ class ClashAPI:
                 errors[key] = APIClientError(
                     f"Missing data from {key} endpoint"
                 )
-
-        if streaming_detection:
-            streaming_data = await fetch_streaming_service_data()
-            data["streaming"] = streaming_data
-            _LOGGER.debug("Streaming detection data: %s", streaming_data)
 
         return FetchResult(data, errors)
 
