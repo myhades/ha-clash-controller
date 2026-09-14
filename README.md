@@ -23,8 +23,10 @@ Core support:
 |-----------------|-----------|----------------|--------|
 | Clash           | Partially | v1.18.0        | End of life |
 | Clash Premium   | Partially | 2023.08.17     | End of life |
-| Clash Meta      | Partially | v1.16.0        | Legacy predecessor of Mihomo |
-| Mihomo          | Yes       | v1.19.28       | Actively maintained |
+| Clash Meta      | Partially | v1.16.0        | End of life |
+| Mihomo          | Yes       | v1.19.28       | Maintained |
+| clash-rs        | Yes       | v0.10.8        | Maintained |
+| sing-box        | Partially | v1.14.0        | Maintained |
 ## Installation
 
 Home Assistant Core must be `2024.4.3` or newer. 
@@ -44,6 +46,8 @@ Download the repo and copy the folder `/custom_components/clash_controller` into
 ## Configuration
 
 You'll need the API location (most likely with a port number) and the bearer token. Having a token set is required to use this integration.
+
+For sing-box, enable `experimental.clash_api` and configure `external_controller` and `secret` first.
 
 To add the integration, navigate to "Settings"  > "Devices & services"  > "Add integration"  > "Clash Controller" or use the My button below. Then, follow the config flow. 
 
