@@ -69,7 +69,6 @@ class GroupSelect(SelectEntityBase):
                 "PUT",
                 f"proxies/{quote(group, safe='')}",
                 json_data={"name": node},
-                suppress_errors=False,
             )
         except Exception as err:
             raise HomeAssistantError(f"Failed to set proxy group {group} to {node}.") from err
@@ -94,7 +93,6 @@ class CoreModeSelect(SelectEntityBase):
                 "PATCH",
                 "configs",
                 json_data={"mode": mode},
-                suppress_errors=False,
             )
         except Exception:
             try:
@@ -102,7 +100,6 @@ class CoreModeSelect(SelectEntityBase):
                     "PUT",
                     "configs",
                     json_data={"mode": mode},
-                    suppress_errors=False,
                 )
             except Exception as err:
                 raise HomeAssistantError(f"Failed to set mode to {mode}.") from err

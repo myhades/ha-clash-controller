@@ -23,6 +23,7 @@ from .api import (
     APIClientError,
     APIConnectionError,
     ClashAPI,
+    FetchResult,
     SERVICE_TABLE,
 )
 from .const import (
@@ -122,7 +123,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
     async def _async_setup(self) -> None:
         """Load data that remains stable for this coordinator instance."""
         try:
-            await self.api.connected(suppress_errors=False)
+            await self.api.connected()
         except (
             APIAuthError,
             APIClientError,
@@ -166,11 +167,13 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         _LOGGER.debug("Start fetching data from Clash.")
 
         try:
-            response = await self.api.fetch_data(
+            result = await self.api.fetch_data(
                 streaming_detection=self.streaming_detection,
-                suppress_errors=True,
             )
+            response = result.data if isinstance(result, FetchResult) else result
             if not CORE_DATA_KEYS.intersection(response):
+                if isinstance(result, FetchResult) and result.errors:
+                    raise UpdateFailed(next(iter(result.errors.values())))
                 raise UpdateFailed("No data returned from Clash core.")
         except Exception as err:
             raise UpdateFailed(err) from err
@@ -324,7 +327,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             action={
                 "method": self.api.async_request,
                 "args": ("POST", "cache/fakeip/flush"),
-                "kwargs": {"suppress_errors": False},
+                "kwargs": {},
             },
             unique_key="flush_fakeip_cache",
         )
@@ -340,7 +343,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             action={
                 "method": self.api.async_request,
                 "args": ("POST", "cache/dns/flush"),
-                "kwargs": {"suppress_errors": False},
+                "kwargs": {},
             },
             unique_key="flush_dns_cache",
         )
@@ -496,7 +499,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 action = {
                     "method": self.api.async_request,
                     "args": ("GET", f"providers/proxies/{encoded}/healthcheck"),
-                    "kwargs": {"params": common_params, "suppress_errors": False},
+                    "kwargs": {"params": common_params},
                 }
                 entity_data.append(
                     ClashEntityData(

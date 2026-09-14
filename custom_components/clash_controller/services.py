@@ -220,7 +220,7 @@ class ClashServicesSetup:
         self._require_capability(coordinator, "restart", "Core restart")
 
         try:
-            await coordinator.api.async_request("POST", "restart", suppress_errors=False)
+            await coordinator.api.async_request("POST", "restart")
         except Exception as err:
             raise self._action_error("reboot_failed", err) from err
 
@@ -255,7 +255,6 @@ class ClashServicesSetup:
                 await coordinator.api.async_request(
                     "DELETE",
                     f"connections/{conn_id}",
-                    suppress_errors=False,
                 )
 
         hosts = parse_filter(HOST_KEYWORD)
@@ -264,7 +263,7 @@ class ClashServicesSetup:
         close_connection = service_call.data.get(CLOSE_CONNECTION, False)
 
         try:
-            response = await coordinator.api.async_request("GET", "connections", suppress_errors=False)
+            response = await coordinator.api.async_request("GET", "connections")
         except Exception as err:
             raise self._action_error("connections_failed", err) from err
 
@@ -290,7 +289,6 @@ class ClashServicesSetup:
                 await coordinator.api.async_request(
                     "DELETE",
                     "connections",
-                    suppress_errors=False,
                 )
         except Exception as err:
             raise self._action_error("close_connections_failed", err) from err
@@ -334,7 +332,6 @@ class ClashServicesSetup:
                     else f"proxies/{quote(node, safe='')}/delay"
                 ),
                 params={"url": url,"timeout": timeout},
-                suppress_errors=False
             )
         except Exception as err:
             raise self._action_error("latency_failed", err) from err
@@ -357,7 +354,6 @@ class ClashServicesSetup:
                 method="GET",
                 endpoint="dns/query",
                 params={"name": domain_name,"type": record_type},
-                suppress_errors=False
             )
         except Exception as err:
             raise self._action_error("dns_query_failed", err) from err
@@ -392,7 +388,7 @@ class ClashServicesSetup:
         rule_proxys = parse_filter(RULE_PROXY)
 
         try:
-            response = await coordinator.api.async_request(method="GET",endpoint="rules",suppress_errors=False)
+            response = await coordinator.api.async_request(method="GET",endpoint="rules")
         except Exception as err:
             raise self._action_error("rules_failed", err) from err
 
@@ -439,7 +435,6 @@ class ClashServicesSetup:
                 params=params,
                 json_data=data,
                 read_line=read_line,
-                suppress_errors=False
             )
         except Exception as err:
             raise self._action_error("api_call_failed", err) from err

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping
 from typing import Any, Optional
 import asyncio
 import json
@@ -37,6 +38,29 @@ POLLING_CAPABILITY_KEYS = (
     "providers_proxies",
     "providers_rules",
 )
+
+
+class FetchResult(Mapping[str, Any]):
+    """Data and endpoint failures collected during one polling cycle."""
+
+    __slots__ = ("data", "errors")
+
+    def __init__(
+        self,
+        data: dict[str, Any],
+        errors: dict[str, ClashAPIError],
+    ) -> None:
+        self.data = data
+        self.errors = errors
+
+    def __getitem__(self, key: str) -> Any:
+        return self.data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.data)
+
+    def __len__(self) -> int:
+        return len(self.data)
 
 
 class ClashAPI:
@@ -207,7 +231,6 @@ class ClashAPI:
     async def async_ws_request(
         self,
         endpoint: str,
-        suppress_errors: bool = True,
         timeout: int = 3,
     ) -> dict[str, Any]:
         """Read one JSON message from websocket endpoint."""
@@ -238,10 +261,22 @@ class ClashAPI:
             raise APIClientError(
                 f"Unexpected websocket message type for {endpoint}: {message.type}"
             )
-        except Exception:
-            if suppress_errors:
-                return {}
-            raise
+        except aiohttp.ClientResponseError as err:
+            if err.status == 401:
+                raise APIAuthError("Invalid API credentials.") from err
+            raise APIClientError(
+                f"Websocket request got an invalid response: {err}"
+            ) from err
+        except asyncio.TimeoutError as err:
+            raise APITimeoutError(f"Websocket request timed out: {err}") from err
+        except aiohttp.ClientConnectionError as err:
+            raise APIConnectionError(
+                f"Websocket request connection error: {err}"
+            ) from err
+        except (json.JSONDecodeError, UnicodeDecodeError) as err:
+            raise APIClientError(f"Error parsing websocket JSON: {err}") from err
+        except aiohttp.ClientError as err:
+            raise APIClientError(f"Websocket request failed: {err}") from err
         finally:
             if websocket is not None and not websocket.closed:
                 try:
@@ -299,7 +334,6 @@ class ClashAPI:
             payload = await asyncio.wait_for(
                 self.async_ws_request(
                     endpoint,
-                    suppress_errors=False,
                     timeout=timeout,
                 ),
                 timeout=timeout + 1.0,
@@ -468,38 +502,25 @@ class ClashAPI:
         params: dict[str, Any] | None = None,
         json_data: dict[str, Any] | None = None,
         read_line: int = 0,
-        suppress_errors: bool = True,
     ) -> dict[str, Any]:
         """General async request method."""
-        try:
-            response = await self._request(
-                method,
-                endpoint,
-                params=params,
-                json_data=json_data,
-                read_line=read_line,
-            )
-        except Exception:
-            if suppress_errors:
-                return {}
-            raise
+        response = await self._request(
+            method,
+            endpoint,
+            params=params,
+            json_data=json_data,
+            read_line=read_line,
+        )
         return response or {}
 
-    async def connected(self, suppress_errors: bool = True) -> bool:
+    async def connected(self) -> bool:
         """Check if API connection is successful by reading /version."""
-        try:
-            response = await self._request("GET", "version")
-            if ("version" not in response) and (not suppress_errors):
-                raise APIClientError(
-                    "Missing version key in response. Is this endpoint running Clash?"
-                )
-            if "version" not in response:
-                return False
-            self._version_response = dict(response)
-        except Exception:
-            if suppress_errors:
-                return False
-            raise
+        response = await self._request("GET", "version")
+        if "version" not in response:
+            raise APIClientError(
+                "Missing version key in response. Is this endpoint running Clash?"
+            )
+        self._version_response = dict(response)
         return True
 
     @staticmethod
@@ -596,7 +617,6 @@ class ClashAPI:
         params: dict[str, Any] | None,
         read_line: int,
         ws_endpoint: str | None,
-        suppress_errors: bool,
     ) -> dict[str, Any]:
         capabilities = self._capabilities or {}
         http_supported = capabilities.get(
@@ -623,7 +643,6 @@ class ClashAPI:
                     response = await asyncio.wait_for(
                         self.async_ws_request(
                             ws_endpoint or endpoint,
-                            suppress_errors=False,
                             timeout=3,
                         ),
                         timeout=4,
@@ -634,7 +653,6 @@ class ClashAPI:
                         endpoint,
                         params=params,
                         read_line=read_line,
-                        suppress_errors=False,
                     )
                 if response:
                     self._transport_preferences[key] = transport
@@ -642,7 +660,7 @@ class ClashAPI:
                 last_error = APIClientError(
                     f"Empty {transport.upper()} response from {endpoint}"
                 )
-            except Exception as err:
+            except ClashAPIError as err:
                 last_error = err
                 _LOGGER.debug(
                     "%s transport failed for %s; trying fallback if available: %s",
@@ -651,8 +669,6 @@ class ClashAPI:
                     err,
                 )
 
-        if suppress_errors:
-            return {}
         if last_error is not None:
             raise last_error
         raise APIClientError(f"No supported transport for {endpoint}")
@@ -660,8 +676,7 @@ class ClashAPI:
     async def fetch_data(
         self,
         streaming_detection: bool = False,
-        suppress_errors: bool = True,
-    ) -> dict[str, Any]:
+    ) -> FetchResult:
         """Get all endpoint data needed by the coordinator."""
 
         async def fetch_streaming_service_data():
@@ -672,12 +687,6 @@ class ClashAPI:
                 ],
                 return_exceptions=True,
             )
-            if not suppress_errors:
-                for result in results:
-                    if isinstance(result, Exception):
-                        raise result
-                    if not result:
-                        raise APIClientError("Missing streaming detection data")
             return dict(zip((service for service in SERVICE_TABLE), results))
 
         capabilities = await self.async_detect_capabilities()
@@ -766,7 +775,6 @@ class ClashAPI:
                     params=spec["params"],
                     read_line=spec["read_line"],
                     ws_endpoint=spec["ws_endpoint"],
-                    suppress_errors=suppress_errors,
                 )
                 for spec in endpoint_specs
             ],
@@ -774,23 +782,27 @@ class ClashAPI:
         )
 
         data: dict[str, Any] = {}
+        errors: dict[str, ClashAPIError] = {}
         for spec, result in zip(endpoint_specs, results):
             key = spec["key"]
-            if isinstance(result, Exception):
-                if not suppress_errors:
-                    raise result
+            if isinstance(result, ClashAPIError):
+                errors[key] = result
                 continue
+            if isinstance(result, BaseException):
+                raise result
             if result:
                 data[key] = result
-            elif not suppress_errors:
-                raise APIClientError(f"Missing data from {key} endpoint")
+            else:
+                errors[key] = APIClientError(
+                    f"Missing data from {key} endpoint"
+                )
 
         if streaming_detection:
             streaming_data = await fetch_streaming_service_data()
             data["streaming"] = streaming_data
             _LOGGER.debug("Streaming detection data: %s", streaming_data)
 
-        return data
+        return FetchResult(data, errors)
 
 
 class ClashAPIError(Exception):
