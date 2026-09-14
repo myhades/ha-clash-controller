@@ -1,145 +1,153 @@
 """Sensor platform for Clash Controller."""
 
-import logging
-
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfDataRate, UnitOfInformation
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .base import BaseEntity
 from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 
-_LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 0
+
+SENSOR_DESCRIPTIONS: dict[str, SensorEntityDescription] = {
+    "upload_speed": SensorEntityDescription(
+        key="upload_speed",
+        translation_key="up_speed",
+        device_class=SensorDeviceClass.DATA_RATE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        suggested_display_precision=2,
+    ),
+    "download_speed": SensorEntityDescription(
+        key="download_speed",
+        translation_key="down_speed",
+        device_class=SensorDeviceClass.DATA_RATE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        suggested_display_precision=2,
+    ),
+    "upload_traffic": SensorEntityDescription(
+        key="upload_traffic",
+        translation_key="up_traffic",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        suggested_display_precision=2,
+    ),
+    "download_traffic": SensorEntityDescription(
+        key="download_traffic",
+        translation_key="down_traffic",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        suggested_display_precision=2,
+    ),
+    "connection_number": SensorEntityDescription(
+        key="connection_number",
+        translation_key="connection_number",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    "proxy_provider_count": SensorEntityDescription(
+        key="proxy_provider_count",
+        translation_key="proxy_provider_count",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    "rule_provider_count": SensorEntityDescription(
+        key="rule_provider_count",
+        translation_key="rule_provider_count",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    "memory_used": SensorEntityDescription(
+        key="memory_used",
+        translation_key="memory_used",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=0,
+    ),
+}
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-):
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up sensors for a config entry."""
+    coordinator: ClashControllerCoordinator = hass.data[DOMAIN][
+        config_entry.entry_id
+    ].coordinator
 
-    coordinator: ClashControllerCoordinator = hass.data[DOMAIN][config_entry.entry_id].coordinator
-
-    sensor_types = {
-        "traffic_sensor": TrafficSensor,
-        "memory_sensor": MemorySensor,
-        "total_traffic_sensor": TotalTrafficSensor,
-        "connection_sensor": ConnectionSensor,
-        "provider_count_sensor": ProviderCountSensor,
-        "proxy_group_sensor": GroupSensor,
-        "streaming_detection": StreamingSensor,
-    }
-
-    sensors = [
-        sensor_types[entity_type](coordinator, entity_data)
-        for entity_data in coordinator.data
-        if (entity_type := entity_data.entity_type) in sensor_types
-    ]
+    sensors: list[SensorEntity] = []
+    for entity_data in coordinator.data:
+        if description := SENSOR_DESCRIPTIONS.get(entity_data.unique_key or ""):
+            sensors.append(ClashNumericSensor(coordinator, entity_data, description))
+        elif entity_data.entity_type == "proxy_group_sensor":
+            sensors.append(GroupSensor(coordinator, entity_data))
+        elif entity_data.entity_type == "streaming_detection":
+            sensors.append(StreamingSensor(coordinator, entity_data))
 
     async_add_entities(sensors)
+
 
 class SensorEntityBase(BaseEntity, SensorEntity):
     """Base sensor entity class."""
 
+
+class ClashNumericSensor(SensorEntityBase):
+    """Numeric sensor described by a static Home Assistant definition."""
+
+    entity_description: SensorEntityDescription
+
     def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
+        self,
+        coordinator: ClashControllerCoordinator,
+        entity_data: ClashEntityData,
+        description: SensorEntityDescription,
     ) -> None:
+        self.entity_description = description
         super().__init__(coordinator, entity_data)
 
     @property
     def native_value(self) -> int | None:
-        """Default state of the base sensor."""
+        """Return the latest numeric value."""
         value = self.entity_data.state
         return int(value) if value is not None else None
 
-class TrafficSensor(SensorEntityBase):
-    """Implementation of a traffic sensor."""
-
-    def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
-    ) -> None:
-        super().__init__(coordinator, entity_data)
-        self._attr_device_class = SensorDeviceClass.DATA_RATE
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = UnitOfDataRate.BYTES_PER_SECOND
-        self._attr_suggested_unit_of_measurement = "MB/s"
-        self._attr_suggested_display_precision = 2
-
-class TotalTrafficSensor(SensorEntityBase):
-    """Implementation of a traffic sensor."""
-
-    def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
-    ) -> None:
-        super().__init__(coordinator, entity_data)
-        self._attr_device_class = SensorDeviceClass.DATA_SIZE
-        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
-        self._attr_suggested_unit_of_measurement = "GB"
-        self._attr_suggested_display_precision = 2
-
-class ConnectionSensor(SensorEntityBase):
-    """Implementation of a traffic sensor."""
-
-    def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
-    ) -> None:
-        super().__init__(coordinator, entity_data)
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-
-class ProviderCountSensor(SensorEntityBase):
-    """Implementation of provider count sensor."""
-
-    def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
-    ) -> None:
-        super().__init__(coordinator, entity_data)
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-
-class MemorySensor(SensorEntityBase):
-    """Implementation of a memory sensor."""
-
-    def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
-    ) -> None:
-        super().__init__(coordinator, entity_data)
-        self._attr_device_class = SensorDeviceClass.DATA_SIZE
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
-        self._attr_suggested_unit_of_measurement = "MB"
-        self._attr_suggested_display_precision = 0
 
 class GroupSensor(SensorEntityBase):
-    """Implementation of a memory sensor."""
+    """Proxy group state sensor."""
 
-    def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
-    ) -> None:
-        super().__init__(coordinator, entity_data)
-    
     @property
     def native_value(self) -> str | None:
+        """Return the selected proxy."""
         return self.entity_data.state
 
-class StreamingSensor(SensorEntityBase):
-    """Implementation of a streaming service detection sensor."""
 
-    def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
-    ) -> None:
-        super().__init__(coordinator, entity_data)
-        self._attr_device_class = SensorDeviceClass.ENUM
+class StreamingSensor(SensorEntityBase):
+    """Streaming service detection sensor."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
 
     @property
     def options(self) -> list[str] | None:
+        """Return the possible service states."""
         return self.entity_data.options
-    
+
     @property
     def native_value(self) -> str | None:
+        """Return the detected service state."""
         return self.entity_data.state
