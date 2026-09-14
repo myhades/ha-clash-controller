@@ -12,8 +12,9 @@ from urllib.parse import quote
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ClashAPI, SERVICE_TABLE
@@ -104,6 +105,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             allow_unsafe=self.allow_unsafe,
             available_endpoints=available_endpoints,
             capabilities=capabilities,
+            session=async_get_clientsession(hass, verify_ssl=not self.allow_unsafe),
+            status_session=async_get_clientsession(hass),
         )
         self._data_by_name: dict[str, ClashEntityData] = {}
         self._data_by_unique_id: dict[str, ClashEntityData] = {}

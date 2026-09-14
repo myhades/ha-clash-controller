@@ -43,6 +43,8 @@ class ClashAPI:
         allow_unsafe: bool = False,
         available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = None,
         capabilities: Optional[dict[str, bool]] = None,
+        session: aiohttp.ClientSession | None = None,
+        status_session: aiohttp.ClientSession | None = None,
     ):
         """Initialize the ClashAPI instance."""
         self.host = host
@@ -52,8 +54,10 @@ class ClashAPI:
             re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_"))
             + "_device"
         )
-        self._session: Optional[aiohttp.ClientSession] = None
-        self._status_session: Optional[aiohttp.ClientSession] = None
+        self._session = session
+        self._status_session = status_session
+        self._owns_session = session is None
+        self._owns_status_session = status_session is None
         self._session_lock = asyncio.Lock()
         self._status_session_lock = asyncio.Lock()
         self._available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = (
@@ -168,6 +172,7 @@ class ClashAPI:
                 params=params,
                 json=json_data,
                 headers=self._request_headers(),
+                timeout=aiohttp.ClientTimeout(total=15),
             ) as response:
                 response.raise_for_status()
                 try:
@@ -399,9 +404,9 @@ class ClashAPI:
         return capabilities
 
     async def close_session(self):
-        """Safely close sessions."""
+        """Close only sessions owned by this API client."""
         async with self._session_lock:
-            if self._session is not None:
+            if self._owns_session and self._session is not None:
                 try:
                     await self._session.close()
                     _LOGGER.debug("Session closed successfully.")
@@ -411,7 +416,7 @@ class ClashAPI:
                     self._session = None
 
         async with self._status_session_lock:
-            if self._status_session is not None:
+            if self._owns_status_session and self._status_session is not None:
                 try:
                     await self._status_session.close()
                 except Exception as err:
@@ -564,7 +569,11 @@ class ClashAPI:
         request_headers = headers or {}
         start_time = time.monotonic()
         try:
-            async with self._status_session.get(url, headers=request_headers) as response:
+            async with self._status_session.get(
+                url,
+                headers=request_headers,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as response:
                 duration = time.monotonic() - start_time
                 return {"latency": duration, "status_code": response.status}
         except asyncio.TimeoutError:

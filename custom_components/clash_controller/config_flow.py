@@ -17,6 +17,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import (
     APITimeoutError,
@@ -93,7 +94,15 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
             api_url = self._normalize_url(api_url, use_ssl)
             user_input[CONF_API_URL] = api_url
-            api = ClashAPI(api_url, token, allow_unsafe)
+            api = ClashAPI(
+                api_url,
+                token,
+                allow_unsafe,
+                session=async_get_clientsession(
+                    self.hass, verify_ssl=not allow_unsafe
+                ),
+                status_session=async_get_clientsession(self.hass),
+            )
 
             await self._set_unique_id(api_url)
 
@@ -142,7 +151,15 @@ class ClashControllerOptionsFlow(OptionsFlow):
             if token:
                 api_url = config_entry.data[CONF_API_URL]
                 allow_unsafe = config_entry.data.get(CONF_ALLOW_UNSAFE, False)
-                api = ClashAPI(api_url, token, allow_unsafe)
+                api = ClashAPI(
+                    api_url,
+                    token,
+                    allow_unsafe,
+                    session=async_get_clientsession(
+                        self.hass, verify_ssl=not allow_unsafe
+                    ),
+                    status_session=async_get_clientsession(self.hass),
+                )
                 errors = await _test_connection(api)
                 await api.close_session()
 
