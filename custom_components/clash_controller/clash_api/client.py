@@ -18,7 +18,7 @@ from .exceptions import (
     APIConnectionError,
     ClashAPIError,
 )
-from .models import FetchResult
+from .models import FetchResult, VersionInfo
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -588,7 +588,7 @@ class ClashAPI:
             return "Meta-compatible core"
         return "Clash-compatible core"
 
-    async def get_version(self) -> dict[str, str]:
+    async def get_version(self) -> VersionInfo:
         """Get normalized core version data."""
         response = self._version_response
         if response is None:
@@ -598,11 +598,11 @@ class ClashAPI:
         if model == "Clash-compatible core":
             hello = await self.async_request("GET", "")
             model = self._infer_core_model(response, hello)
-        return {
-            "meta": "Meta Core" if is_meta else "Non-Meta Core",
-            "model": model,
-            "version": response.get("version", "unknown"),
-        }
+        return VersionInfo(
+            meta="Meta Core" if is_meta else "Non-Meta Core",
+            model=model,
+            version=response.get("version", "unknown"),
+        )
 
     async def async_detect_available_endpoints(self) -> list[tuple[str, dict[str, Any]]]:
         """Backward-compatible wrapper for old startup flow."""

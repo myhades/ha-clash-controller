@@ -143,7 +143,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
     async def _get_device(self) -> DeviceInfo:
         """Generate a device object."""
         version_info = await self.api.get_version()
-        model = version_info.get("model", version_info.get("meta", "Unknown Core"))
+        model = version_info.model
         lowered_model = model.lower()
         manufacturer = (
             "MetaCubeX"
@@ -153,7 +153,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         device_kwargs = {
             "manufacturer": manufacturer,
             "model": model,
-            "sw_version": version_info.get("version"),
+            "sw_version": version_info.version,
             "identifiers": {(DOMAIN, self.device_id)},
         }
         try:

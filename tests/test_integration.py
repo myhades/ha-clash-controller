@@ -25,6 +25,7 @@ from custom_components.clash_controller.clash_api import (
     APIConnectionError,
     APITimeoutError,
     FetchResult,
+    VersionInfo,
 )
 from custom_components.clash_controller.const import DOMAIN
 from custom_components.clash_controller.diagnostics import (
@@ -75,7 +76,9 @@ def backend(monkeypatch):
                 payload=deepcopy(PAYLOAD),
                 connected=AsyncMock(return_value=True),
                 get_version=AsyncMock(
-                    return_value={"model": "Mihomo", "version": "test"}
+                    return_value=VersionInfo(
+                        model="Mihomo", version="test", meta="Meta Core"
+                    )
                 ),
                 async_close=AsyncMock(),
                 async_request=AsyncMock(return_value={}),

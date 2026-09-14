@@ -10,6 +10,7 @@ try:
         ClashAPIError,
         EndpointCapability,
         FetchResult,
+        VersionInfo,
     )
 except ImportError:  # Support direct file loading by compatibility tooling.
     from custom_components.clash_controller.clash_api import (
@@ -21,6 +22,7 @@ except ImportError:  # Support direct file loading by compatibility tooling.
         ClashAPIError,
         EndpointCapability,
         FetchResult,
+        VersionInfo,
     )
 
 __all__ = (
@@ -32,4 +34,5 @@ __all__ = (
     "ClashAPIError",
     "EndpointCapability",
     "FetchResult",
+    "VersionInfo",
 )

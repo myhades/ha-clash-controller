@@ -9,7 +9,7 @@ from .exceptions import (
     APIConnectionError,
     ClashAPIError,
 )
-from .models import FetchResult
+from .models import FetchResult, VersionInfo
 
 __all__ = (
     "APITimeoutError",
@@ -20,4 +20,5 @@ __all__ = (
     "ClashAPIError",
     "EndpointCapability",
     "FetchResult",
+    "VersionInfo",
 )

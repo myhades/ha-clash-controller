@@ -2,6 +2,7 @@
 
 import asyncio
 from collections import Counter
+from unittest.mock import AsyncMock
 
 import aiohttp
 import pytest
@@ -33,8 +34,18 @@ pytestmark = pytest.mark.enable_socket
         ({"name": "Clash"}, None, "Clash-compatible core"),
     ],
 )
-def test_core_identity(payload, hello, model):
+async def test_core_identity(payload, hello, model):
     assert ClashAPI._infer_core_model(payload, hello) == model
+    api = ClashAPI("http://localhost/", "")
+    api.async_request = AsyncMock(side_effect=[payload, hello or {}])
+    version = await api.get_version()
+    assert version.model == model
+    assert version.version == payload.get("version", "unknown")
+    assert dict(version) == {
+        "model": model,
+        "version": version.version,
+        "meta": "Meta Core" if payload.get("meta") is True else "Non-Meta Core",
+    }
 
 
 @pytest.mark.parametrize(
