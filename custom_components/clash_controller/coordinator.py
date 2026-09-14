@@ -85,8 +85,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=config_entry,
             name=f"{DOMAIN} ({self.host})",
-            update_method=self._async_update_data,
             update_interval=timedelta(seconds=self.poll_interval),
         )
 
@@ -108,6 +108,11 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         self._data_by_name: dict[str, ClashEntityData] = {}
         self._data_by_unique_id: dict[str, ClashEntityData] = {}
         _LOGGER.debug(f"Clash API initialized for coordinator {self.name}")
+
+    async def _async_setup(self) -> None:
+        """Load data that remains stable for this coordinator instance."""
+        await self.api.async_detect_capabilities()
+        self.device = await self._get_device()
 
     async def _get_device(self) -> DeviceInfo:
         """Generate a device object."""
@@ -148,8 +153,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             )
             if not CORE_DATA_KEYS.intersection(response):
                 raise UpdateFailed("No data returned from Clash core.")
-            if not self.device:
-                self.device = await self._get_device()
         except Exception as err:
             raise UpdateFailed(err) from err
 
