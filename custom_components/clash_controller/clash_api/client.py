@@ -192,10 +192,10 @@ class ClashAPI:
             raise APIClientError("HTTP session is closed")
 
         ws_url = self._build_ws_url(endpoint)
-        ws_timeout: Any = timeout
+        ws_timeout: Any = 0.5
         client_ws_timeout = getattr(aiohttp, "ClientWSTimeout", None)
         if client_ws_timeout is not None:
-            ws_timeout = client_ws_timeout(ws_receive=timeout, ws_close=timeout)
+            ws_timeout = client_ws_timeout(ws_receive=timeout, ws_close=0.5)
         websocket: aiohttp.ClientWebSocketResponse | None = None
         try:
             websocket = await self._session.ws_connect(
@@ -231,14 +231,7 @@ class ClashAPI:
             raise APIClientError(f"Websocket request failed: {err}") from err
         finally:
             if websocket is not None and not websocket.closed:
-                try:
-                    await asyncio.wait_for(websocket.close(), timeout=0.5)
-                except TimeoutError:
-                    # A compatible core may not complete the close handshake.
-                    websocket._response.close()  # noqa: SLF001
-                except asyncio.CancelledError:
-                    websocket._response.close()  # noqa: SLF001
-                    raise
+                await websocket.close()
 
     async def _probe_http_endpoint(
         self,
