@@ -114,7 +114,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
 
     async def _async_setup(self) -> None:
         """Load data that remains stable for this coordinator instance."""
-        await self.api.async_detect_capabilities()
+        await self.api.async_detect_capabilities(force=True)
         self.device = await self._get_device()
 
     async def _get_device(self) -> DeviceInfo:

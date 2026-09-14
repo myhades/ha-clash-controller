@@ -29,6 +29,16 @@ SERVICE_TABLE = {
     },
 }
 
+POLLING_CAPABILITY_KEYS = (
+    "proxies",
+    "connections",
+    "traffic",
+    "memory",
+    "configs",
+    "providers_proxies",
+    "providers_rules",
+)
+
 
 class ClashAPI:
     """A utility class to interact with the Clash API."""
@@ -304,6 +314,11 @@ class ClashAPI:
         if self._capabilities and not force:
             return self._capabilities
 
+        previous_capabilities = (
+            dict(self._capabilities) if self._capabilities else None
+        )
+        previous_endpoints = list(self._available_endpoints or [])
+
         probe_tasks = {
             "proxies": self._probe_http_endpoint("GET", "proxies"),
             "connections": self._probe_http_endpoint("GET", "connections"),
@@ -381,6 +396,18 @@ class ClashAPI:
         capabilities["ws_memory"] = ws_memory
         capabilities["ws_connections"] = ws_connections
         capabilities["ws_logs"] = False
+
+        if previous_capabilities and not any(
+            capabilities.get(key, False) for key in POLLING_CAPABILITY_KEYS
+        ):
+            _LOGGER.debug(
+                "Capability probing returned no polling endpoints for %s; "
+                "retaining the previous result",
+                self.host,
+            )
+            self._capabilities = previous_capabilities
+            self._available_endpoints = previous_endpoints
+            return previous_capabilities
 
         self._capabilities = capabilities
         self._available_endpoints = []
