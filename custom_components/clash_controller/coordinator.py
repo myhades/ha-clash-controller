@@ -50,6 +50,11 @@ CORE_DATA_KEYS = frozenset(
 )
 
 
+def _device_id_from_host(host: str) -> str:
+    """Return the legacy Home Assistant device identifier for a controller host."""
+    return re.sub(r"[^a-zA-Z0-9]", "_", host.strip().lower().rstrip("_")) + "_device"
+
+
 @dataclass(slots=True)
 class ClashEntityData:
     """Structured data model used by entities."""
@@ -79,6 +84,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         self.host = config_entry.data["api_url"]
         self.token = config_entry.data["bearer_token"]
         self.allow_unsafe = config_entry.data["allow_unsafe"]
+        self.device_id = _device_id_from_host(self.host)
         self.config_entry = config_entry
 
         self.poll_interval = config_entry.options.get(
@@ -148,7 +154,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             "manufacturer": manufacturer,
             "model": model,
             "sw_version": version_info.get("version"),
-            "identifiers": {(DOMAIN, self.api.device_id)},
+            "identifiers": {(DOMAIN, self.device_id)},
         }
         try:
             return DeviceInfo(
@@ -235,7 +241,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 or item.entity_type
             )
             item.unique_id = (
-                f"{self.api.device_id}"
+                f"{self.device_id}"
                 f"_{item.entity_type}"
                 f"_{id_source.lower().replace(' ', '_')}"
             )

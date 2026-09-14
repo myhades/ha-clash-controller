@@ -7,7 +7,6 @@ from typing import Any, Optional
 import asyncio
 import json
 import logging
-import re
 import ssl
 
 import aiohttp
@@ -81,10 +80,6 @@ class ClashAPI:
         self.host = host
         self.token = token
         self.allow_unsafe = allow_unsafe
-        self.device_id = (
-            re.sub(r"[^a-zA-Z0-9]", "_", self.host.strip().lower().rstrip("_"))
-            + "_device"
-        )
         self._session = session
         self._owns_session = session is None
         self._session_lock = asyncio.Lock()
