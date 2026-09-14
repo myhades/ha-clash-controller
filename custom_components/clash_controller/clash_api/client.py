@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
 from typing import Any, Optional
 import asyncio
 import json
@@ -10,6 +9,16 @@ import logging
 import ssl
 
 import aiohttp
+
+from .capabilities import EndpointCapability
+from .exceptions import (
+    APITimeoutError,
+    APIAuthError,
+    APIClientError,
+    APIConnectionError,
+    ClashAPIError,
+)
+from .models import FetchResult
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,46 +31,6 @@ POLLING_CAPABILITY_KEYS = (
     "providers_proxies",
     "providers_rules",
 )
-
-
-class FetchResult(Mapping[str, Any]):
-    """Data and endpoint failures collected during one polling cycle."""
-
-    __slots__ = ("data", "errors")
-
-    def __init__(
-        self,
-        data: dict[str, Any],
-        errors: dict[str, ClashAPIError],
-    ) -> None:
-        self.data = data
-        self.errors = errors
-
-    def __getitem__(self, key: str) -> Any:
-        return self.data[key]
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self.data)
-
-    def __len__(self) -> int:
-        return len(self.data)
-
-
-class EndpointCapability:
-    """Result of probing one API transport endpoint."""
-
-    __slots__ = ("error", "status_code", "supported")
-
-    def __init__(
-        self,
-        supported: bool,
-        *,
-        error: ClashAPIError | None = None,
-        status_code: int | None = None,
-    ) -> None:
-        self.supported = supported
-        self.error = error
-        self.status_code = status_code
 
 
 class ClashAPI:
@@ -822,23 +791,3 @@ class ClashAPI:
                 )
 
         return FetchResult(data, errors)
-
-
-class ClashAPIError(Exception):
-    """Base exception for Clash API failures."""
-
-
-class APIAuthError(ClashAPIError):
-    """Exception class for auth error."""
-
-
-class APIClientError(ClashAPIError):
-    """Exception class for generic client error."""
-
-
-class APIConnectionError(ClashAPIError):
-    """Exception class for connection error."""
-
-
-class APITimeoutError(APIConnectionError):
-    """Exception class for timeout error."""
