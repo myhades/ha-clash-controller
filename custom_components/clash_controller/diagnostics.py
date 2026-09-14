@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from . import ClashControllerConfigEntry
 from .const import CONF_API_URL, CONF_BEAR_TOKEN
 
-TO_REDACT = {CONF_API_URL, CONF_BEAR_TOKEN}
+TO_REDACT = {CONF_API_URL, CONF_BEAR_TOKEN, "title", "unique_id"}
 
 
 async def async_get_config_entry_diagnostics(
