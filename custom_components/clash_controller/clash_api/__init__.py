@@ -1,6 +1,6 @@
 """Clash-compatible controller API client."""
 
-from .capabilities import EndpointCapability
+from .capabilities import CapabilityReport, EndpointCapability
 from .client import ClashAPI
 from .exceptions import (
     APITimeoutError,
@@ -19,6 +19,7 @@ __all__ = (
     "ClashAPI",
     "ClashAPIError",
     "EndpointCapability",
+    "CapabilityReport",
     "FetchResult",
     "VersionInfo",
 )

@@ -9,6 +9,7 @@ try:
         ClashAPI,
         ClashAPIError,
         EndpointCapability,
+        CapabilityReport,
         FetchResult,
         VersionInfo,
     )
@@ -21,6 +22,7 @@ except ImportError:  # Support direct file loading by compatibility tooling.
         ClashAPI,
         ClashAPIError,
         EndpointCapability,
+        CapabilityReport,
         FetchResult,
         VersionInfo,
     )
@@ -33,6 +35,7 @@ __all__ = (
     "ClashAPI",
     "ClashAPIError",
     "EndpointCapability",
+    "CapabilityReport",
     "FetchResult",
     "VersionInfo",
 )

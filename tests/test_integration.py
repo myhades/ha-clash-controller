@@ -24,6 +24,7 @@ from custom_components.clash_controller.clash_api import (
     APIClientError,
     APIConnectionError,
     APITimeoutError,
+    CapabilityReport,
     FetchResult,
     VersionInfo,
 )
@@ -88,7 +89,9 @@ def backend(monkeypatch):
                 return FetchResult(deepcopy(api.payload), {})
 
             api.fetch_data = AsyncMock(side_effect=fetch)
-            api.async_detect_capabilities = AsyncMock(return_value=api.capabilities)
+            api.async_detect_capabilities = AsyncMock(
+                return_value=CapabilityReport(dict(api.capabilities), {})
+            )
             instances[host] = api
         return instances[host]
 

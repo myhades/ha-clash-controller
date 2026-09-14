@@ -10,7 +10,7 @@ import ssl
 
 import aiohttp
 
-from .capabilities import EndpointCapability
+from .capabilities import CapabilityReport, EndpointCapability
 from .exceptions import (
     APITimeoutError,
     APIAuthError,
@@ -76,6 +76,14 @@ class ClashAPI:
     def capability_outcomes(self) -> dict[str, EndpointCapability]:
         """Return detailed results from the latest capability probe."""
         return self._capability_outcomes
+
+    def _capability_report(self, *, used_cached: bool = False) -> CapabilityReport:
+        """Capture the effective flags and latest outcomes without exposing cache dicts."""
+        return CapabilityReport(
+            capabilities=dict(self._capabilities or {}),
+            outcomes=dict(self._capability_outcomes),
+            used_cached=used_cached,
+        )
 
     def _request_headers(self) -> dict[str, str]:
         return {
@@ -338,10 +346,10 @@ class ClashAPI:
 
     async def async_detect_capabilities(
         self, force: bool = False
-    ) -> dict[str, bool]:
+    ) -> CapabilityReport:
         """Probe API endpoints and websocket support."""
         if self._capabilities and not force:
-            return self._capabilities
+            return self._capability_report(used_cached=True)
 
         previous_capabilities = (
             dict(self._capabilities) if self._capabilities else None
@@ -487,7 +495,7 @@ class ClashAPI:
             )
             self._capabilities = previous_capabilities
             self._available_endpoints = previous_endpoints
-            return previous_capabilities
+            return self._capability_report(used_cached=True)
 
         self._capabilities = capabilities
         self._transport_preferences.clear()
@@ -509,7 +517,7 @@ class ClashAPI:
         if supported:
             _LOGGER.debug("Detected capabilities for %s: %s", self.host, supported)
 
-        return capabilities
+        return self._capability_report()
 
     async def async_close(self) -> None:
         """Close only sessions owned by this API client."""

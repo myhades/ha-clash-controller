@@ -138,18 +138,29 @@ async def test_capability_cache_and_probe_outcomes(monkeypatch):
 
     monkeypatch.setattr(api, "_probe_http_endpoint", http)
     monkeypatch.setattr(api, "_probe_ws_endpoint", ws)
-    initial = dict(await api.async_detect_capabilities())
+    report = await api.async_detect_capabilities()
+    initial = dict(report)
+    assert report.capabilities == initial
+    assert not report.used_cached
     assert initial["traffic"] and initial["ws_traffic"] and not initial["http_traffic"]
     assert api.capability_outcomes["rules"].error is None
     before = calls.copy()
-    assert await api.async_detect_capabilities() == initial
+    cached = await api.async_detect_capabilities()
+    assert cached == initial
+    assert cached.used_cached
     assert calls == before
     mode = "failed"
-    assert await api.async_detect_capabilities(force=True) == initial
+    failed = await api.async_detect_capabilities(force=True)
+    assert failed == initial
+    assert failed.used_cached
+    assert isinstance(failed.outcomes["proxies"].error, APIConnectionError)
+    assert report.outcomes["proxies"].error is None
     assert api.capability_outcomes["proxies"].error is not None
     mode = "unsupported"
     refreshed = await api.async_detect_capabilities(force=True)
     assert not refreshed["traffic"] and refreshed["proxies"]
+    assert not refreshed.used_cached
+    assert report["traffic"]  # A later probe must not rewrite an earlier report.
 
 
 async def test_polling_fallback_and_partial_errors(monkeypatch):
