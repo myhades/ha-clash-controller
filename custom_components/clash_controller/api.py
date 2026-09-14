@@ -793,17 +793,21 @@ class ClashAPI:
         return data
 
 
-class APIAuthError(Exception):
+class ClashAPIError(Exception):
+    """Base exception for Clash API failures."""
+
+
+class APIAuthError(ClashAPIError):
     """Exception class for auth error."""
 
 
-class APIClientError(Exception):
+class APIClientError(ClashAPIError):
     """Exception class for generic client error."""
 
 
-class APITimeoutError(Exception):
-    """Exception class for timeout error."""
-
-
-class APIConnectionError(Exception):
+class APIConnectionError(ClashAPIError):
     """Exception class for connection error."""
+
+
+class APITimeoutError(APIConnectionError):
+    """Exception class for timeout error."""
