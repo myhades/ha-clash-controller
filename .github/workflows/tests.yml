@@ -5,55 +5,55 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
+    inputs:
+      full:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
-  pytest:
-    name: Pytest
+  integration:
+    name: Integration tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
       - name: Install test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r tests/requirements.txt
-
-      - name: Run tests
-        run: python tests/run.py unit
+        run: pip install -r tests/requirements.txt
+      - name: Run API and Home Assistant contracts
+        run: python tests/run.py integration
 
   core-compatibility:
-    name: Core compatibility (${{ matrix.core }})
+    name: Core compatibility
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        core: [clash, clash_premium, clash_meta, mihomo]
+    timeout-minutes: 20
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-
-      - name: Cache test core
-        uses: actions/cache@v4
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
+      - uses: actions/cache@v4
         with:
           path: .cache/core-compatibility
-          key: core-compatibility-${{ runner.os }}-${{ runner.arch }}-${{ matrix.core }}-${{ hashFiles('tests/core_compatibility/assets.json') }}
-
+          key: cores-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tests/core_compatibility/assets.json') }}
       - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
+      - name: Run all pinned cores
+        env:
+          FULL_VALIDATION: ${{ inputs.full }}
         run: |
-          python -m pip install --upgrade pip
-          pip install -r tests/requirements.txt
-
-      - name: Run Home Assistant and real-core system tests
-        run: python tests/run.py system --core '${{ matrix.core }}'
+          if [ "$FULL_VALIDATION" = "true" ]; then
+            python tests/run.py system --full
+          else
+            python tests/run.py system
+          fi
