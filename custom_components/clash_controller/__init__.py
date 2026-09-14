@@ -3,19 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.typing import ConfigType
 
 from .coordinator import ClashControllerCoordinator
 from .services import ClashServicesSetup
-
-_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -28,7 +24,6 @@ class RuntimeData:
     """Class to hold integration data."""
 
     coordinator: ClashControllerCoordinator
-    setup_done: bool = False
 
 
 type ClashControllerConfigEntry = ConfigEntry[RuntimeData]
@@ -45,18 +40,8 @@ async def async_setup_entry(
 ) -> bool:
     """Set up Clash Controller from a config entry."""
 
-    runtime_data: RuntimeData | None = getattr(config_entry, "runtime_data", None)
-    setup_done = runtime_data.setup_done if runtime_data else False
     coordinator = ClashControllerCoordinator(hass, config_entry)
-
-    try:
-        await coordinator.async_config_entry_first_refresh()
-    except ConfigEntryNotReady as err:
-        if not setup_done:
-            await coordinator.api.close_session()
-            raise err
-        _LOGGER.warning(err)
-        coordinator.data = coordinator.data or []
+    await coordinator.async_config_entry_first_refresh()
 
     if coordinator.last_update_success:
         capabilities = coordinator.api.capabilities or {}
@@ -78,7 +63,7 @@ async def async_setup_entry(
     config_entry.async_on_unload(
         config_entry.add_update_listener(_async_update_listener)
     )
-    config_entry.runtime_data = RuntimeData(coordinator, True)
+    config_entry.runtime_data = RuntimeData(coordinator)
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     return True
 
