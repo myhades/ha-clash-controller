@@ -6,7 +6,6 @@ from typing import Any, Optional
 import asyncio
 import json
 import logging
-import random
 import re
 import ssl
 import time
@@ -42,9 +41,6 @@ POLLING_CAPABILITY_KEYS = (
 
 class ClashAPI:
     """A utility class to interact with the Clash API."""
-
-    MAX_RETRIES = 2
-    BACKOFF_BASE = 1
 
     def __init__(
         self,
@@ -476,50 +472,6 @@ class ClashAPI:
             raise
         return response or {}
 
-    async def async_retryable_request(
-        self,
-        method: str,
-        endpoint: str,
-        params: dict[str, Any] | None = None,
-        json_data: dict[str, Any] | None = None,
-        read_line: int = 0,
-        suppress_errors: bool = True,
-    ) -> dict[str, Any]:
-        """Async request with retry and backoff for connectivity issues."""
-        last_exc = None
-
-        for attempt in range(1, self.MAX_RETRIES + 1):
-            try:
-                response = await self._request(
-                    method,
-                    endpoint,
-                    params=params,
-                    json_data=json_data,
-                    read_line=read_line,
-                )
-                return response or {}
-            except (APITimeoutError, APIConnectionError) as err:
-                last_exc = err
-                _LOGGER.debug(
-                    "Request %s %s timed out on attempt %d/%d",
-                    method,
-                    endpoint,
-                    attempt,
-                    self.MAX_RETRIES,
-                )
-                if attempt < self.MAX_RETRIES:
-                    backoff = self.BACKOFF_BASE * (2 ** (attempt - 1))
-                    jitter = random.uniform(0, backoff * 0.1)
-                    await asyncio.sleep(backoff + jitter)
-                else:
-                    break
-            except Exception as err:
-                last_exc = err
-                break
-        if suppress_errors:
-            return {}
-        raise last_exc
-
     async def connected(self, suppress_errors: bool = True) -> bool:
         """Check if API connection is successful by reading /version."""
         try:
@@ -647,7 +599,7 @@ class ClashAPI:
                 return ws_response
             self._capabilities[f"ws_{key}"] = False
 
-        return await self.async_retryable_request(
+        return await self.async_request(
             "GET",
             endpoint,
             params=params,
