@@ -10,7 +10,6 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base import BaseEntity
-from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,7 +20,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ):
 
-    coordinator: ClashControllerCoordinator = hass.data[DOMAIN][config_entry.entry_id].coordinator
+    coordinator: ClashControllerCoordinator = config_entry.runtime_data.coordinator
 
     select_types = {
         "proxy_group_selector": GroupSelect,

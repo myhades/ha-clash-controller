@@ -11,7 +11,6 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceEntry
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator
@@ -29,7 +28,7 @@ PLATFORMS: list[Platform] = [
 class RuntimeData:
     """Class to hold integration data."""
 
-    coordinator: DataUpdateCoordinator
+    coordinator: ClashControllerCoordinator
     cancel_update_listener: Callable
     setup_done: bool = False
 
@@ -37,8 +36,7 @@ class RuntimeData:
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up Clash Controller from a config entry."""
 
-    hass.data.setdefault(DOMAIN, {})
-    runtime_data: RuntimeData | None = hass.data[DOMAIN].get(config_entry.entry_id)
+    runtime_data: RuntimeData | None = getattr(config_entry, "runtime_data", None)
     setup_done = runtime_data.setup_done if runtime_data else False
     coordinator = ClashControllerCoordinator(hass, config_entry)
 
@@ -69,7 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             )
 
     cancel_update_listener = config_entry.add_update_listener(_async_update_listener)
-    hass.data[DOMAIN][config_entry.entry_id] = RuntimeData(
+    config_entry.runtime_data = RuntimeData(
         coordinator, cancel_update_listener, True
     )
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
@@ -93,7 +91,7 @@ async def async_remove_config_entry_device(
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
 
-    runtime_data = hass.data[DOMAIN][config_entry.entry_id]
+    runtime_data: RuntimeData = config_entry.runtime_data
     runtime_data.cancel_update_listener()
     coordinator = runtime_data.coordinator
     if coordinator:
@@ -102,9 +100,13 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         config_entry, PLATFORMS
     )
     if unload_ok:
-        hass.data[DOMAIN].pop(config_entry.entry_id)
-        if not hass.data[DOMAIN]:
+        config_entry.runtime_data = None
+        other_loaded_entries = [
+            entry
+            for entry in hass.config_entries.async_loaded_entries(DOMAIN)
+            if entry.entry_id != config_entry.entry_id
+        ]
+        if not other_loaded_entries:
             for service in list(hass.services.async_services_for_domain(DOMAIN)):
                 hass.services.async_remove(DOMAIN, service)
-            hass.data.pop(DOMAIN)
     return unload_ok

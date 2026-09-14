@@ -12,7 +12,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .base import BaseEntity
-from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 
 PARALLEL_UPDATES = 0
@@ -87,9 +86,7 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up sensors for a config entry."""
-    coordinator: ClashControllerCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ].coordinator
+    coordinator: ClashControllerCoordinator = config_entry.runtime_data.coordinator
 
     sensors: list[SensorEntity] = []
     for entity_data in coordinator.data:

@@ -173,7 +173,10 @@ class ClashServicesSetup:
         config_entry_id = device.config_entry_id
         if not config_entry_id:
             raise HomeAssistantError("Invalid device id.")
-        runtime_data = self.hass.data.get(DOMAIN, {}).get(config_entry_id)
+        config_entry = self.hass.config_entries.async_get_entry(config_entry_id)
+        runtime_data = (
+            getattr(config_entry, "runtime_data", None) if config_entry else None
+        )
         if not runtime_data:
             raise HomeAssistantError("Invalid device id.")
         return runtime_data.coordinator
