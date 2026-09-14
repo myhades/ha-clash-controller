@@ -17,7 +17,14 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import ClashAPI, SERVICE_TABLE
+from .api import (
+    APITimeoutError,
+    APIAuthError,
+    APIClientError,
+    APIConnectionError,
+    ClashAPI,
+    SERVICE_TABLE,
+)
 from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
@@ -114,6 +121,15 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
 
     async def _async_setup(self) -> None:
         """Load data that remains stable for this coordinator instance."""
+        try:
+            await self.api.connected(suppress_errors=False)
+        except (
+            APIAuthError,
+            APIClientError,
+            APIConnectionError,
+            APITimeoutError,
+        ) as err:
+            raise UpdateFailed(err) from err
         await self.api.async_detect_capabilities(force=True)
         self.device = await self._get_device()
 

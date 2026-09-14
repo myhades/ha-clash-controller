@@ -76,6 +76,7 @@ class ClashAPI:
         self._capabilities: Optional[dict[str, bool]] = (
             dict(capabilities) if capabilities else None
         )
+        self._version_response: dict[str, Any] | None = None
 
     @property
     def available_endpoints(self) -> Optional[list[tuple[str, dict[str, Any]]]]:
@@ -529,6 +530,7 @@ class ClashAPI:
                 )
             if "version" not in response:
                 return False
+            self._version_response = dict(response)
         except Exception:
             if suppress_errors:
                 return False
@@ -570,7 +572,9 @@ class ClashAPI:
 
     async def get_version(self) -> dict[str, str]:
         """Get normalized core version data."""
-        response = await self.async_request("GET", "version")
+        response = self._version_response
+        if response is None:
+            response = await self.async_request("GET", "version")
         is_meta = response.get("meta") is True
         model = self._infer_core_model(response)
         if model == "Clash-compatible core":
