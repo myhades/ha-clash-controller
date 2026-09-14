@@ -10,8 +10,8 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator
 from .services import ClashServicesSetup
 
@@ -32,6 +32,12 @@ class RuntimeData:
 
 
 type ClashControllerConfigEntry = ConfigEntry[RuntimeData]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up integration-wide service actions."""
+    ClashServicesSetup(hass)
+    return True
 
 
 async def async_setup_entry(
@@ -74,7 +80,6 @@ async def async_setup_entry(
     )
     config_entry.runtime_data = RuntimeData(coordinator, True)
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
-    ClashServicesSetup(hass)
     return True
 
 
@@ -108,13 +113,4 @@ async def async_unload_entry(
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS
     )
-    if unload_ok:
-        other_loaded_entries = [
-            entry
-            for entry in hass.config_entries.async_loaded_entries(DOMAIN)
-            if entry.entry_id != config_entry.entry_id
-        ]
-        if not other_loaded_entries:
-            for service in list(hass.services.async_services_for_domain(DOMAIN)):
-                hass.services.async_remove(DOMAIN, service)
     return unload_ok
