@@ -114,6 +114,41 @@
           }
         }
     },
+    "exceptions": {
+        "invalid_device": {
+            "message": "The selected Clash instance is invalid or is not loaded."
+        },
+        "unsupported_action": {
+            "message": "{action} is not supported by the selected core."
+        },
+        "invalid_latency_target": {
+            "message": "Provide exactly one of group or node."
+        },
+        "invalid_json": {
+            "message": "The {field} field must contain a JSON object."
+        },
+        "reboot_failed": {
+            "message": "Error rebooting the core: {error}"
+        },
+        "connections_failed": {
+            "message": "Error getting connections: {error}"
+        },
+        "close_connections_failed": {
+            "message": "Error closing connections: {error}"
+        },
+        "latency_failed": {
+            "message": "Error getting latency: {error}"
+        },
+        "dns_query_failed": {
+            "message": "Error performing the DNS query: {error}"
+        },
+        "rules_failed": {
+            "message": "Error getting rules: {error}"
+        },
+        "api_call_failed": {
+            "message": "Error performing the API call: {error}"
+        }
+    },
     "services": {
         "reboot_core_service": {
           "name": "Reboot Clash Core",

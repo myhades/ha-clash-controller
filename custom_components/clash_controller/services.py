@@ -7,7 +7,7 @@ import voluptuous as vol
 
 from homeassistant.const import CONF_DEVICE_ID
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
@@ -169,16 +169,25 @@ class ClashServicesSetup:
         dev_reg = dr.async_get(self.hass)
         device = dev_reg.async_get(device_id)
         if not device:
-            raise HomeAssistantError("Invalid device id.")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_device",
+            )
         config_entry_id = device.config_entry_id
         if not config_entry_id:
-            raise HomeAssistantError("Invalid device id.")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_device",
+            )
         config_entry = self.hass.config_entries.async_get_entry(config_entry_id)
         runtime_data = (
             getattr(config_entry, "runtime_data", None) if config_entry else None
         )
         if not runtime_data:
-            raise HomeAssistantError("Invalid device id.")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_device",
+            )
         return runtime_data.coordinator
 
     @staticmethod
@@ -189,9 +198,20 @@ class ClashServicesSetup:
     ) -> None:
         capabilities = coordinator.api.capabilities or {}
         if not capabilities.get(capability, False):
-            raise HomeAssistantError(
-                f"{action} is not supported by the selected core."
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unsupported_action",
+                translation_placeholders={"action": action},
             )
+
+    @staticmethod
+    def _action_error(translation_key: str, err: Exception) -> HomeAssistantError:
+        """Create a translated action execution error."""
+        return HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key=translation_key,
+            translation_placeholders={"error": str(err)},
+        )
 
     async def async_reboot_core_service(self, service_call: ServiceCall) -> None:
         """Execute service call for rebooting core."""
@@ -202,7 +222,7 @@ class ClashServicesSetup:
         try:
             await coordinator.api.async_request("POST", "restart", suppress_errors=False)
         except Exception as err:
-            raise HomeAssistantError(f"Error rebooting core: {err}") from err
+            raise self._action_error("reboot_failed", err) from err
 
     async def async_filter_connection_service(self, service_call: ServiceCall) -> dict:
         """Execute service call for filtering connection."""
@@ -246,7 +266,7 @@ class ClashServicesSetup:
         try:
             response = await coordinator.api.async_request("GET", "connections", suppress_errors=False)
         except Exception as err:
-            raise HomeAssistantError(f"Error getting connections: {err}") from err
+            raise self._action_error("connections_failed", err) from err
 
         connections = response.get("connections", []) or []
         filtered_connections = [conn for conn in connections if filter_connection(conn)]
@@ -273,7 +293,7 @@ class ClashServicesSetup:
                     suppress_errors=False,
                 )
         except Exception as err:
-            raise HomeAssistantError(f"Error closing connection: {err}") from err
+            raise self._action_error("close_connections_failed", err) from err
 
         return service_response
 
@@ -294,7 +314,10 @@ class ClashServicesSetup:
         group = service_call.data.get(GROUP_NAME, "").strip()
         node = service_call.data.get(NODE_NAME, "").strip()
         if bool(group) ^ bool(node) is False:
-            raise HomeAssistantError("Exactly one of the group or node should be provided.")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_latency_target",
+            )
 
         capability = "group_delay" if group else "proxy_delay"
         self._require_capability(coordinator, capability, "Latency testing")
@@ -314,7 +337,7 @@ class ClashServicesSetup:
                 suppress_errors=False
             )
         except Exception as err:
-            raise HomeAssistantError(f"Error getting latency: {err}") from err
+            raise self._action_error("latency_failed", err) from err
         
         if group:
             return sort_group(response)
@@ -337,7 +360,7 @@ class ClashServicesSetup:
                 suppress_errors=False
             )
         except Exception as err:
-            raise HomeAssistantError(f"Error performing DNS query: {err}") from err
+            raise self._action_error("dns_query_failed", err) from err
 
     async def async_get_rule_service(self, service_call: ServiceCall) -> dict:
         """Execute service call for performing a DNS query."""
@@ -371,7 +394,7 @@ class ClashServicesSetup:
         try:
             response = await coordinator.api.async_request(method="GET",endpoint="rules",suppress_errors=False)
         except Exception as err:
-            raise HomeAssistantError(f"Error getting rules: {err}") from err
+            raise self._action_error("rules_failed", err) from err
 
         rules = response.get("rules", [])
         filtered_rules = [rule for rule in rules if filter_rule(rule)]
@@ -384,21 +407,30 @@ class ClashServicesSetup:
 
         coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
 
-        def to_dict(input_str: str):
+        def to_dict(input_str: str, field: str):
+            if not input_str:
+                return {}
             try:
                 data = json.loads(input_str)
                 if isinstance(data, dict):
                     return data
-                else:
-                    return {}
-            except json.JSONDecodeError:
-                return {}
+            except json.JSONDecodeError as err:
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="invalid_json",
+                    translation_placeholders={"field": field},
+                ) from err
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_json",
+                translation_placeholders={"field": field},
+            )
 
         method = service_call.data.get(API_METHOD, "GET")
         endpoint = service_call.data.get(API_ENDPOINT, "")
         read_line = service_call.data.get(API_READ_LINE, 0)
-        params = to_dict(service_call.data.get(API_PARAMS, "") or "")
-        data = to_dict(service_call.data.get(API_DATA, "") or "")
+        params = to_dict(service_call.data.get(API_PARAMS, "") or "", "api_params")
+        data = to_dict(service_call.data.get(API_DATA, "") or "", "api_data")
         
         try:
             response = await coordinator.api.async_request(
@@ -410,6 +442,6 @@ class ClashServicesSetup:
                 suppress_errors=False
             )
         except Exception as err:
-            raise HomeAssistantError(f"Error performing API call: {err}") from err
+            raise self._action_error("api_call_failed", err) from err
         
         return {"response": response}

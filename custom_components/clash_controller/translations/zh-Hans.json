@@ -114,6 +114,41 @@
           }
         }
     },
+    "exceptions": {
+        "invalid_device": {
+            "message": "所选 Clash 实例无效或尚未加载。"
+        },
+        "unsupported_action": {
+            "message": "所选内核不支持{action}。"
+        },
+        "invalid_latency_target": {
+            "message": "策略组和节点必须且只能提供一个。"
+        },
+        "invalid_json": {
+            "message": "字段 {field} 必须包含 JSON 对象。"
+        },
+        "reboot_failed": {
+            "message": "重启内核时出错：{error}"
+        },
+        "connections_failed": {
+            "message": "获取连接时出错：{error}"
+        },
+        "close_connections_failed": {
+            "message": "关闭连接时出错：{error}"
+        },
+        "latency_failed": {
+            "message": "获取延迟时出错：{error}"
+        },
+        "dns_query_failed": {
+            "message": "执行 DNS 查询时出错：{error}"
+        },
+        "rules_failed": {
+            "message": "获取规则时出错：{error}"
+        },
+        "api_call_failed": {
+            "message": "执行 API 调用时出错：{error}"
+        }
+    },
     "services": {
         "reboot_core_service": {
             "name": "重启 Clash 核心",
