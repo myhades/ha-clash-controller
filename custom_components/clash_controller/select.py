@@ -4,11 +4,11 @@ import logging
 from urllib.parse import quote
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import ClashControllerConfigEntry
 from .base import BaseEntity
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 
@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: ClashControllerConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
 

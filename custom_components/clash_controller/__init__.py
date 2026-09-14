@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 import logging
 
@@ -29,11 +28,15 @@ class RuntimeData:
     """Class to hold integration data."""
 
     coordinator: ClashControllerCoordinator
-    cancel_update_listener: Callable
     setup_done: bool = False
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+type ClashControllerConfigEntry = ConfigEntry[RuntimeData]
+
+
+async def async_setup_entry(
+    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
+) -> bool:
     """Set up Clash Controller from a config entry."""
 
     runtime_data: RuntimeData | None = getattr(config_entry, "runtime_data", None)
@@ -66,33 +69,39 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 },
             )
 
-    cancel_update_listener = config_entry.add_update_listener(_async_update_listener)
-    config_entry.runtime_data = RuntimeData(
-        coordinator, cancel_update_listener, True
+    config_entry.async_on_unload(
+        config_entry.add_update_listener(_async_update_listener)
     )
+    config_entry.runtime_data = RuntimeData(coordinator, True)
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     ClashServicesSetup(hass)
     return True
 
 
-async def _async_update_listener(hass: HomeAssistant, config_entry):
+async def _async_update_listener(
+    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
+) -> None:
     """Handle config options update."""
 
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 async def async_remove_config_entry_device(
-    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
+    hass: HomeAssistant,
+    config_entry: ClashControllerConfigEntry,
+    device_entry: DeviceEntry,
+) -> bool:
     """Handle entry removal."""
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
+) -> bool:
     """Unload a config entry."""
 
     runtime_data: RuntimeData = config_entry.runtime_data
-    runtime_data.cancel_update_listener()
     coordinator = runtime_data.coordinator
     if coordinator:
         await coordinator.api.close_session()
@@ -100,7 +109,6 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         config_entry, PLATFORMS
     )
     if unload_ok:
-        config_entry.runtime_data = None
         other_loaded_entries = [
             entry
             for entry in hass.config_entries.async_loaded_entries(DOMAIN)
