@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Run the three-layer Clash Controller test system."""
+"""Run integration, core compatibility, and release validation."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
-from core_compatibility.download_core import MANIFEST_PATH, download_core
+from core_compatibility.download_core import (
+    MANIFEST_PATH,
+    download_core,
+    download_test_database,
+)
 
 
 def _pytest(*args: str, environment: dict[str, str] | None = None) -> int:
@@ -40,11 +44,15 @@ def _run_core(
 ) -> int:
     """Run the system suite against one pinned core."""
     binary = download_core(core, cache_dir)
-    expression = "system" if include_release else "system and not release"
+    database = download_test_database(cache_dir)
+    expression = (
+        "system" if include_release and core == "mihomo" else "system and not release"
+    )
     environment = {
         **os.environ,
         "CLASH_CORE_BINARY": str(binary),
         "CLASH_CORE_NAME": core,
+        "CLASH_TEST_DATABASE": str(database),
     }
     if config_path is not None:
         environment["CLASH_TEST_CONFIG"] = str(config_path.resolve())
@@ -53,18 +61,18 @@ def _run_core(
 
 
 def main() -> int:
-    """Run unit, system, or release validation."""
+    """Run integration, system, or release validation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "layer",
-        choices=("unit", "system", "release"),
-        help="unit is fast; system uses real HA/core; release runs the full matrix",
+        choices=("integration", "system", "release"),
+        help="integration runs API/HA contracts; system runs real cores; release runs both plus process recovery",
     )
     parser.add_argument(
         "--core",
         action="append",
         dest="cores",
-        help="core to test in the system layer; may be repeated (default: mihomo)",
+        help="restrict system validation to selected cores; may be repeated (default: all)",
     )
     parser.add_argument(
         "--all-cores",
@@ -88,7 +96,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.layer == "unit":
+    if args.layer == "integration":
         return _pytest("-m", "not system")
 
     with MANIFEST_PATH.open(encoding="utf-8") as stream:
@@ -97,19 +105,28 @@ def main() -> int:
         unknown = sorted(set(args.cores) - set(manifest))
         if unknown:
             parser.error(f"unknown core(s): {', '.join(unknown)}")
-    cores = list(manifest) if args.all_cores or args.layer == "release" else (args.cores or ["mihomo"])
+    cores = (
+        list(manifest)
+        if args.all_cores or args.layer == "release"
+        else (args.cores or list(manifest))
+    )
     include_release = args.full or args.layer == "release"
 
     failures: list[str] = []
     if args.layer == "release" and _pytest("-m", "not system"):
-        failures.append("unit")
+        failures.append("integration")
     for core in cores:
-        if _run_core(
-            core,
-            include_release=include_release,
-            cache_dir=args.cache_dir,
-            config_path=args.config,
-        ):
+        try:
+            result = _run_core(
+                core,
+                include_release=include_release,
+                cache_dir=args.cache_dir,
+                config_path=args.config,
+            )
+        except (OSError, RuntimeError, ValueError) as err:
+            print(f"{core}: {err}", file=sys.stderr)
+            result = 1
+        if result:
             failures.append(core)
 
     if failures:

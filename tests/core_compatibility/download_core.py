@@ -7,16 +7,35 @@ import argparse
 import gzip
 import hashlib
 import json
-import os
-from pathlib import Path
 import platform
 import shutil
 import sys
+import tarfile
 import tempfile
+from contextlib import ExitStack
+from pathlib import Path
 from typing import Any
 from urllib.request import Request, urlopen
 
 MANIFEST_PATH = Path(__file__).with_name("assets.json")
+
+
+def download_test_database(output_dir: Path) -> Path:
+    """Use MaxMind's small country fixture so legacy cores do not download GeoIP."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    target = output_dir / "Country.mmdb"
+    url = (
+        "https://raw.githubusercontent.com/maxmind/MaxMind-DB/"
+        "263906163c8f14682ad49a2e2bb351ce412db0bf/test-data/GeoIP2-Country-Test.mmdb"
+    )
+    expected_hash = "b37601903448683d241af52893c8cbf0fed461e0cdebe0bfaca01891fdeb6db9"
+    if not target.exists() or _sha256(target) != expected_hash:
+        with urlopen(url, timeout=60) as response:
+            payload = response.read()
+        if hashlib.sha256(payload).hexdigest() != expected_hash:
+            raise RuntimeError("SHA-256 mismatch for the test country database")
+        target.write_bytes(payload)
+    return target.resolve()
 
 
 def _platform_key() -> str:
@@ -57,7 +76,8 @@ def download_core(core: str, output_dir: Path) -> Path:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     version = str(core_data["version"]).replace("/", "-")
-    archive = output_dir / f"{core}-{version}-{platform_key}.gz"
+    suffix = "gz" if asset.get("format", "gzip") == "gzip" else "download"
+    archive = output_dir / f"{core}-{version}-{platform_key}.{suffix}"
     executable = output_dir / f"{core}-{version}-{platform_key}"
     expected_hash = asset["sha256"]
 
@@ -66,7 +86,9 @@ def download_core(core: str, output_dir: Path) -> Path:
         executable.unlink(missing_ok=True)
 
     if not archive.exists():
-        request = Request(asset["url"], headers={"User-Agent": "ha-clash-controller-tests"})
+        request = Request(
+            asset["url"], headers={"User-Agent": "ha-clash-controller-tests"}
+        )
         with tempfile.NamedTemporaryFile(dir=output_dir, delete=False) as temporary:
             temporary_path = Path(temporary.name)
             try:
@@ -84,11 +106,23 @@ def download_core(core: str, output_dir: Path) -> Path:
         temporary_path.replace(archive)
 
     if not executable.exists():
-        with gzip.open(archive, "rb") as compressed, tempfile.NamedTemporaryFile(
-            dir=output_dir, delete=False
-        ) as temporary:
+        with (
+            ExitStack() as stack,
+            tempfile.NamedTemporaryFile(dir=output_dir, delete=False) as temporary,
+        ):
             temporary_path = Path(temporary.name)
             try:
+                format_name = asset.get("format", "gzip")
+                if format_name == "tar.gz":
+                    bundle = stack.enter_context(tarfile.open(archive, "r:gz"))
+                    compressed = bundle.extractfile(asset["member"])
+                    if compressed is None:
+                        raise ValueError("Archive does not contain the core binary")
+                    stack.enter_context(compressed)
+                elif format_name == "raw":
+                    compressed = stack.enter_context(archive.open("rb"))
+                else:
+                    compressed = stack.enter_context(gzip.open(archive, "rb"))
                 shutil.copyfileobj(compressed, temporary)
             except BaseException:
                 temporary_path.unlink(missing_ok=True)
