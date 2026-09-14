@@ -1,0 +1,33 @@
+{
+  "entity": {
+    "sensor": {
+      "up_speed": {
+        "default": "mdi:arrow-up"
+      },
+      "down_speed": {
+        "default": "mdi:arrow-down"
+      },
+      "up_traffic": {
+        "default": "mdi:tray-arrow-up"
+      },
+      "down_traffic": {
+        "default": "mdi:tray-arrow-down"
+      },
+      "connection_number": {
+        "default": "mdi:transit-connection"
+      },
+      "memory_used": {
+        "default": "mdi:memory"
+      },
+      "proxy_provider_count": {
+        "default": "mdi:server-outline"
+      },
+      "rule_provider_count": {
+        "default": "mdi:file-document-outline"
+      },
+      "netflix_service": {
+        "default": "mdi:netflix"
+      }
+    }
+  }
+}
