@@ -72,6 +72,7 @@ class ClashAPI:
         self._capabilities: Optional[dict[str, bool]] = (
             dict(capabilities) if capabilities else None
         )
+        self._transport_preferences: dict[str, str] = {}
         self._version_response: dict[str, Any] | None = None
 
     @property
@@ -370,12 +371,16 @@ class ClashAPI:
 
         memory_first = http_capabilities.pop("memory_first", False)
         memory_second = http_capabilities.pop("memory_second", False)
+        http_traffic = http_capabilities.get("traffic", False)
+        http_connections = http_capabilities.get("connections", False)
+        http_memory = memory_first or memory_second
         capabilities: dict[str, bool] = dict(http_capabilities)
-        capabilities["traffic"] = http_capabilities.get("traffic", False) or ws_traffic
-        capabilities["memory"] = memory_first or memory_second or ws_memory
-        capabilities["connections"] = (
-            http_capabilities.get("connections", False) or ws_connections
-        )
+        capabilities["http_traffic"] = http_traffic
+        capabilities["http_memory"] = http_memory
+        capabilities["http_connections"] = http_connections
+        capabilities["traffic"] = http_traffic or ws_traffic
+        capabilities["memory"] = http_memory or ws_memory
+        capabilities["connections"] = http_connections or ws_connections
 
         capabilities["group_detail"] = capabilities.get("group", False)
         # A controller can expose group delay without a /group collection.
@@ -407,6 +412,7 @@ class ClashAPI:
             return previous_capabilities
 
         self._capabilities = capabilities
+        self._transport_preferences.clear()
         self._available_endpoints = []
         if memory_first or memory_second:
             self._available_endpoints.append(
@@ -583,29 +589,64 @@ class ClashAPI:
         ws_endpoint: str | None,
         suppress_errors: bool,
     ) -> dict[str, Any]:
-        if ws_endpoint and self._capabilities and self._capabilities.get(f"ws_{key}", False):
-            try:
-                ws_response = await asyncio.wait_for(
-                    self.async_ws_request(
-                        ws_endpoint,
-                        suppress_errors=True,
-                        timeout=3,
-                    ),
-                    timeout=4,
-                )
-            except Exception:
-                ws_response = {}
-            if ws_response:
-                return ws_response
-            self._capabilities[f"ws_{key}"] = False
-
-        return await self.async_request(
-            "GET",
-            endpoint,
-            params=params,
-            read_line=read_line,
-            suppress_errors=suppress_errors,
+        capabilities = self._capabilities or {}
+        http_supported = capabilities.get(
+            f"http_{key}", capabilities.get(key, False)
         )
+        ws_supported = bool(
+            ws_endpoint and capabilities.get(f"ws_{key}", False)
+        )
+        preferred = self._transport_preferences.get(key)
+        if preferred not in {"http", "ws"}:
+            preferred = "ws" if ws_supported else "http"
+
+        transports = [preferred]
+        alternate = "http" if preferred == "ws" else "ws"
+        if alternate == "http" and http_supported:
+            transports.append(alternate)
+        elif alternate == "ws" and ws_supported:
+            transports.append(alternate)
+
+        last_error: Exception | None = None
+        for transport in transports:
+            try:
+                if transport == "ws":
+                    response = await asyncio.wait_for(
+                        self.async_ws_request(
+                            ws_endpoint or endpoint,
+                            suppress_errors=False,
+                            timeout=3,
+                        ),
+                        timeout=4,
+                    )
+                else:
+                    response = await self.async_request(
+                        "GET",
+                        endpoint,
+                        params=params,
+                        read_line=read_line,
+                        suppress_errors=False,
+                    )
+                if response:
+                    self._transport_preferences[key] = transport
+                    return response
+                last_error = APIClientError(
+                    f"Empty {transport.upper()} response from {endpoint}"
+                )
+            except Exception as err:
+                last_error = err
+                _LOGGER.debug(
+                    "%s transport failed for %s; trying fallback if available: %s",
+                    transport.upper(),
+                    endpoint,
+                    err,
+                )
+
+        if suppress_errors:
+            return {}
+        if last_error is not None:
+            raise last_error
+        raise APIClientError(f"No supported transport for {endpoint}")
 
     async def fetch_data(
         self,
