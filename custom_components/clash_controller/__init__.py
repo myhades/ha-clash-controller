@@ -94,7 +94,7 @@ async def async_unload_entry(
     runtime_data: RuntimeData = config_entry.runtime_data
     coordinator = runtime_data.coordinator
     if coordinator:
-        await coordinator.api.close_session()
+        await coordinator.api.async_close()
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS
     )

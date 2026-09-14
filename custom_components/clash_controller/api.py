@@ -169,6 +169,8 @@ class ClashAPI:
 
         if self._session is None:
             await self._establish_session()
+        elif self._session.closed:
+            raise APIClientError("HTTP session is closed")
 
         url = f"{self.host}{endpoint}"
         _LOGGER.debug("Making %s request to %s, read line: %s.", method, url, read_line)
@@ -196,13 +198,10 @@ class ClashAPI:
                 raise APIAuthError("Invalid API credentials.") from err
             raise APIClientError(f"API request got an invalid response: {err}") from err
         except asyncio.TimeoutError as err:
-            await self.close_session()
             raise APITimeoutError(f"API request timed out: {err}") from err
         except aiohttp.ClientConnectionError as err:
-            await self.close_session()
             raise APIConnectionError(f"API request connection error: {err}") from err
         except Exception as err:
-            await self.close_session()
             raise APIClientError(f"API request generic failure: {err}") from err
 
     async def async_ws_request(
@@ -214,6 +213,8 @@ class ClashAPI:
         """Read one JSON message from websocket endpoint."""
         if self._session is None:
             await self._establish_session()
+        elif self._session.closed:
+            raise APIClientError("HTTP session is closed")
 
         ws_url = self._build_ws_url(endpoint)
         ws_timeout: Any = timeout
@@ -264,6 +265,8 @@ class ClashAPI:
     ) -> bool:
         if self._session is None:
             await self._establish_session()
+        elif self._session.closed:
+            raise APIClientError("HTTP session is closed")
 
         url = f"{self.host}{endpoint}"
         try:
@@ -433,7 +436,7 @@ class ClashAPI:
 
         return capabilities
 
-    async def close_session(self):
+    async def async_close(self) -> None:
         """Close only sessions owned by this API client."""
         async with self._session_lock:
             if self._owns_session and self._session is not None:
@@ -441,7 +444,7 @@ class ClashAPI:
                     await self._session.close()
                     _LOGGER.debug("Session closed successfully.")
                 except Exception as err:
-                    _LOGGER.warning(f"Failed to close session: {err}")
+                    _LOGGER.warning("Failed to close session: %s", err)
                 finally:
                     self._session = None
 
@@ -450,9 +453,13 @@ class ClashAPI:
                 try:
                     await self._status_session.close()
                 except Exception as err:
-                    _LOGGER.warning(f"Failed to close status probe session: {err}")
+                    _LOGGER.warning("Failed to close status probe session: %s", err)
                 finally:
                     self._status_session = None
+
+    async def close_session(self) -> None:
+        """Close owned sessions for backward compatibility."""
+        await self.async_close()
 
     async def async_request(
         self,
@@ -551,6 +558,8 @@ class ClashAPI:
         try:
             if self._status_session is None:
                 await self._establish_status_session()
+            elif self._status_session.closed:
+                raise APIClientError("Status probe session is closed")
         except Exception as err:
             _LOGGER.debug("Error creating status probe session: %s", err)
             return {"latency": -1, "status_code": 000}

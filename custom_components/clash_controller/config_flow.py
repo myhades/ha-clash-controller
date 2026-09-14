@@ -110,9 +110,9 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             if "base" not in errors:
                 user_input["capabilities"] = {}
                 user_input["available_endpoints"] = []
-                await api.close_session()
+                await api.async_close()
                 return self.async_create_entry(title=api_url, data=user_input)
-            await api.close_session()
+            await api.async_close()
 
         return self.async_show_form(
             step_id="user",
@@ -161,7 +161,7 @@ class ClashControllerOptionsFlow(OptionsFlow):
                     status_session=async_get_clientsession(self.hass),
                 )
                 errors = await _test_connection(api)
-                await api.close_session()
+                await api.async_close()
 
             if errors.get("base") != "invalid_token":
                 options = dict(config_entry.options)
