@@ -122,10 +122,20 @@ class ClashNumericSensor(SensorEntityBase):
         super().__init__(coordinator, entity_data)
 
     @property
-    def native_value(self) -> int | None:
+    def native_value(self) -> int | float | None:
         """Return the latest numeric value."""
         value = self.entity_data.state
-        return int(value) if value is not None else None
+        return value if self._is_numeric(value) else None
+
+    @property
+    def available(self) -> bool:
+        """Return whether this sensor has a valid numeric reading."""
+        return super().available and self._is_numeric(self.entity_data.state)
+
+    @staticmethod
+    def _is_numeric(value: object) -> bool:
+        """Return whether a value is a supported sensor number."""
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
 class GroupSensor(SensorEntityBase):
