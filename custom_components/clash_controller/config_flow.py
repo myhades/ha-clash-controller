@@ -18,7 +18,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .clash_api import (
+from clashapi import (
     APIAuthError,
     APIClientError,
     APIConnectionError,
