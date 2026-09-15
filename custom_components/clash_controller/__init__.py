@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.typing import ConfigType
 
 from .coordinator import ClashControllerCoordinator
@@ -63,16 +62,6 @@ async def async_migrate_entry(
             minor_version=2,
         )
     return True
-
-async def async_remove_config_entry_device(
-    hass: HomeAssistant,
-    config_entry: ClashControllerConfigEntry,
-    device_entry: DeviceEntry,
-) -> bool:
-    """Handle entry removal."""
-
-    return True
-
 
 async def async_unload_entry(
     hass: HomeAssistant, config_entry: ClashControllerConfigEntry
