@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
 import re
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 from urllib.parse import quote
@@ -18,20 +18,20 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .clash_api import (
-    APITimeoutError,
     APIAuthError,
     APIClientError,
     APIConnectionError,
+    APITimeoutError,
     ClashAPI,
     FetchResult,
 )
 from .const import (
-    DOMAIN,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_CONCURRENT_CONNECTIONS,
-    DEFAULT_STREAMING_DETECTION,
     CONF_CONCURRENT_CONNECTIONS,
     CONF_STREAMING_DETECTION,
+    DEFAULT_CONCURRENT_CONNECTIONS,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_STREAMING_DETECTION,
+    DOMAIN,
 )
 from .streaming import SERVICE_TABLE, StreamingDetector
 
@@ -116,7 +116,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         self.api = ClashAPI(
             host=self.host,
             token=self.token,
-            allow_unsafe=self.allow_unsafe,
             available_endpoints=available_endpoints,
             capabilities=capabilities,
             session=async_get_clientsession(hass, verify_ssl=not self.allow_unsafe),
@@ -176,9 +175,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             result = await self.api.fetch_data()
             response = result.data if isinstance(result, FetchResult) else result
             if self.streaming_detection:
-                response["streaming"] = (
-                    await self.streaming_detector.async_fetch_data()
-                )
+                response["streaming"] = await self.streaming_detector.async_fetch_data()
             if not CORE_DATA_KEYS.intersection(response):
                 if isinstance(result, FetchResult) and result.errors:
                     raise UpdateFailed(next(iter(result.errors.values())))
@@ -188,7 +185,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
 
         data = self._build_entity_data(response)
         real_entities = [
-            item for item in data if item.entity_type not in {"fakeip_flush_button", "dns_flush_button"}
+            item
+            for item in data
+            if item.entity_type not in {"fakeip_flush_button", "dns_flush_button"}
         ]
         if not real_entities:
             raise UpdateFailed("Empty response")
@@ -205,7 +204,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         entity_data: list[ClashEntityData] = []
 
         if capabilities.get("traffic"):
-            entity_data.extend(self._build_traffic_entities(response.get("traffic", {})))
+            entity_data.extend(
+                self._build_traffic_entities(response.get("traffic", {}))
+            )
         if capabilities.get("connections"):
             entity_data.extend(
                 self._build_connection_entities(response.get("connections", {}))
@@ -226,7 +227,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                     ),
                 )
             )
-        entity_data.extend(self._build_streaming_entities(response.get("streaming", {})))
+        entity_data.extend(
+            self._build_streaming_entities(response.get("streaming", {}))
+        )
 
         if capabilities.get("cache_fakeip_flush"):
             entity_data.append(self._build_fakeip_button())
@@ -235,10 +238,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
 
         for item in entity_data:
             id_source = (
-                item.unique_key
-                or item.name
-                or item.translation_key
-                or item.entity_type
+                item.unique_key or item.name or item.translation_key or item.entity_type
             )
             item.unique_id = (
                 f"{self.device_id}"
@@ -362,7 +362,11 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         entity_data: list[ClashEntityData] = []
         group_selector_items = ["tfo", "type", "udp", "xudp", "alive", "history"]
         group_sensor_items = group_selector_items + ["all"]
-        urltest_items = group_sensor_items + ["expectedStatus", "testUrl", "lastTestTime"]
+        urltest_items = group_sensor_items + [
+            "expectedStatus",
+            "testUrl",
+            "lastTestTime",
+        ]
 
         for item in proxies.get("proxies", {}).values():
             if item.get("type") in ["Selector", "Fallback"]:
@@ -373,7 +377,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                         entity_type="proxy_group_selector",
                         icon="mdi:network-outline",
                         options=item.get("all"),
-                        attributes={k: item[k] for k in group_selector_items if k in item},
+                        attributes={
+                            k: item[k] for k in group_selector_items if k in item
+                        },
                     )
                 )
             elif item.get("type") == "URLTest":
@@ -387,7 +393,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                         name=item.get("name", ""),
                         state=item.get("now"),
                         entity_type=(
-                            "proxy_group_selector" if supports_fixed else "proxy_group_sensor"
+                            "proxy_group_selector"
+                            if supports_fixed
+                            else "proxy_group_sensor"
                         ),
                         icon="mdi:network-outline",
                         options=item.get("all") if supports_fixed else None,
@@ -431,6 +439,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         provider_healthcheck_enabled: bool,
     ) -> list[ClashEntityData]:
         """Create entities for provider metrics and actions."""
+
         def _safe_timeout(value: Any) -> int:
             try:
                 timeout = int(value)

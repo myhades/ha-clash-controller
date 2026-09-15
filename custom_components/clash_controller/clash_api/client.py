@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
 import asyncio
 import json
 import logging
-import ssl
+from typing import Any, Optional
 
 import aiohttp
 
 from .capabilities import CapabilityReport, EndpointCapability
 from .exceptions import (
-    APITimeoutError,
     APIAuthError,
     APIClientError,
     APIConnectionError,
+    APITimeoutError,
     ClashAPIError,
 )
 from .models import FetchResult, VersionInfo
@@ -40,18 +39,15 @@ class ClashAPI:
         self,
         host: str,
         token: str,
-        allow_unsafe: bool = False,
+        *,
+        session: aiohttp.ClientSession,
         available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = None,
         capabilities: Optional[dict[str, bool]] = None,
-        session: aiohttp.ClientSession | None = None,
     ):
         """Initialize the ClashAPI instance."""
         self.host = host
         self.token = token
-        self.allow_unsafe = allow_unsafe
         self._session = session
-        self._owns_session = session is None
-        self._session_lock = asyncio.Lock()
         self._available_endpoints: Optional[list[tuple[str, dict[str, Any]]]] = (
             available_endpoints
         )
@@ -103,30 +99,6 @@ class ClashAPI:
             base = self.host
         return f"{base}{endpoint}"
 
-    async def _establish_session(self):
-        """Establish a session with given configuration."""
-        async with self._session_lock:
-            if self._session is not None and not self._session.closed:
-                return
-            ssl_context = None
-            if self.allow_unsafe:
-                ssl_context = ssl.create_default_context()
-                ssl_context.check_hostname = False
-                ssl_context.verify_mode = ssl.CERT_NONE
-
-            new_session = None
-            try:
-                new_session = aiohttp.ClientSession(
-                    connector=aiohttp.TCPConnector(ssl=ssl_context),
-                    timeout=aiohttp.ClientTimeout(total=15),
-                )
-                self._session = new_session
-                _LOGGER.debug("Session created successfully.")
-            except Exception as err:
-                if new_session:
-                    await new_session.close()
-                raise APIClientError(f"Error creating HTTP session: {err}") from err
-
     async def _request(
         self,
         method: str,
@@ -151,9 +123,7 @@ class ClashAPI:
                     return json.loads(line.decode("utf-8").strip())
             return None
 
-        if self._session is None:
-            await self._establish_session()
-        elif self._session.closed:
+        if self._session.closed:
             raise APIClientError("HTTP session is closed")
 
         url = f"{self.host}{endpoint}"
@@ -194,9 +164,7 @@ class ClashAPI:
         timeout: int = 3,
     ) -> dict[str, Any]:
         """Read one JSON message from websocket endpoint."""
-        if self._session is None:
-            await self._establish_session()
-        elif self._session.closed:
+        if self._session.closed:
             raise APIClientError("HTTP session is closed")
 
         ws_url = self._build_ws_url(endpoint)
@@ -252,9 +220,7 @@ class ClashAPI:
         probe_timeout: float = 4.0,
     ) -> EndpointCapability:
         try:
-            if self._session is None:
-                await self._establish_session()
-            elif self._session.closed:
+            if self._session.closed:
                 raise APIClientError("HTTP session is closed")
 
             url = f"{self.host}{endpoint}"
@@ -309,9 +275,7 @@ class ClashAPI:
         except aiohttp.ClientConnectionError as err:
             return EndpointCapability(
                 False,
-                error=APIConnectionError(
-                    f"Capability probe connection error: {err}"
-                ),
+                error=APIConnectionError(f"Capability probe connection error: {err}"),
             )
         except (json.JSONDecodeError, UnicodeDecodeError) as err:
             return EndpointCapability(
@@ -344,16 +308,12 @@ class ClashAPI:
                 error=APITimeoutError(f"Capability probe timed out: {err}"),
             )
 
-    async def async_detect_capabilities(
-        self, force: bool = False
-    ) -> CapabilityReport:
+    async def async_detect_capabilities(self, force: bool = False) -> CapabilityReport:
         """Probe API endpoints and websocket support."""
         if self._capabilities and not force:
             return self._capability_report(used_cached=True)
 
-        previous_capabilities = (
-            dict(self._capabilities) if self._capabilities else None
-        )
+        previous_capabilities = dict(self._capabilities) if self._capabilities else None
         previous_endpoints = list(self._available_endpoints or [])
 
         probe_tasks = {
@@ -390,7 +350,9 @@ class ClashAPI:
         }
 
         probe_names = list(probe_tasks.keys())
-        probe_results = await asyncio.gather(*probe_tasks.values(), return_exceptions=True)
+        probe_results = await asyncio.gather(
+            *probe_tasks.values(), return_exceptions=True
+        )
         probe_outcomes: dict[str, EndpointCapability] = {}
         http_capabilities: dict[str, bool] = {}
         for name, result in zip(probe_names, probe_results):
@@ -485,8 +447,10 @@ class ClashAPI:
             if name in polling_probe_names
         )
         self._capability_outcomes = probe_outcomes
-        if previous_capabilities and polling_probe_failed and not any(
-            capabilities.get(key, False) for key in POLLING_CAPABILITY_KEYS
+        if (
+            previous_capabilities
+            and polling_probe_failed
+            and not any(capabilities.get(key, False) for key in POLLING_CAPABILITY_KEYS)
         ):
             _LOGGER.debug(
                 "Capability probing returned no polling endpoints for %s; "
@@ -511,29 +475,11 @@ class ClashAPI:
         if http_capabilities.get("proxies"):
             self._available_endpoints.append(("proxies", {}))
 
-        supported = ", ".join(
-            name for name, enabled in capabilities.items() if enabled
-        )
+        supported = ", ".join(name for name, enabled in capabilities.items() if enabled)
         if supported:
             _LOGGER.debug("Detected capabilities for %s: %s", self.host, supported)
 
         return self._capability_report()
-
-    async def async_close(self) -> None:
-        """Close only sessions owned by this API client."""
-        async with self._session_lock:
-            if self._owns_session and self._session is not None:
-                try:
-                    await self._session.close()
-                    _LOGGER.debug("Session closed successfully.")
-                except Exception as err:
-                    _LOGGER.warning("Failed to close session: %s", err)
-                finally:
-                    self._session = None
-
-    async def close_session(self) -> None:
-        """Close owned sessions for backward compatibility."""
-        await self.async_close()
 
     async def async_request(
         self,
@@ -612,7 +558,9 @@ class ClashAPI:
             version=response.get("version", "unknown"),
         )
 
-    async def async_detect_available_endpoints(self) -> list[tuple[str, dict[str, Any]]]:
+    async def async_detect_available_endpoints(
+        self,
+    ) -> list[tuple[str, dict[str, Any]]]:
         """Backward-compatible wrapper for old startup flow."""
         await self.async_detect_capabilities()
         return self._available_endpoints or []
@@ -626,12 +574,8 @@ class ClashAPI:
         ws_endpoint: str | None,
     ) -> dict[str, Any]:
         capabilities = self._capabilities or {}
-        http_supported = capabilities.get(
-            f"http_{key}", capabilities.get(key, False)
-        )
-        ws_supported = bool(
-            ws_endpoint and capabilities.get(f"ws_{key}", False)
-        )
+        http_supported = capabilities.get(f"http_{key}", capabilities.get(key, False))
+        ws_supported = bool(ws_endpoint and capabilities.get(f"ws_{key}", False))
         preferred = self._transport_preferences.get(key)
         if preferred not in {"http", "ws"}:
             preferred = "ws" if ws_supported else "http"
@@ -787,8 +731,6 @@ class ClashAPI:
             if result:
                 data[key] = result
             else:
-                errors[key] = APIClientError(
-                    f"Missing data from {key} endpoint"
-                )
+                errors[key] = APIClientError(f"Missing data from {key} endpoint")
 
         return FetchResult(data, errors)

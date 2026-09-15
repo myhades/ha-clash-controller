@@ -2,6 +2,7 @@
 
 from urllib.parse import quote
 
+import aiohttp
 import pytest
 
 from custom_components.clash_controller.clash_api import (
@@ -17,9 +18,9 @@ pytestmark = [pytest.mark.system, pytest.mark.enable_socket]
 
 async def test_core_contract(running_core: RunningCore):
     """Verify auth, declared capabilities, payloads and a real write/read cycle."""
-    api = ClashAPI(running_core.url, SECRET)
-    bad_api = ClashAPI(running_core.url, "wrong-secret")
-    try:
+    async with aiohttp.ClientSession() as session:
+        api = ClashAPI(running_core.url, SECRET, session=session)
+        bad_api = ClashAPI(running_core.url, "wrong-secret", session=session)
         with pytest.raises(APIAuthError):
             await bad_api.connected()
         assert await api.connected()
@@ -91,6 +92,3 @@ async def test_core_contract(running_core: RunningCore):
             assert (await api.async_request("GET", "configs"))["mode"] == "global"
         finally:
             await set_mode(original_mode)
-    finally:
-        await bad_api.async_close()
-        await api.async_close()

@@ -36,7 +36,7 @@ pytestmark = pytest.mark.enable_socket
 )
 async def test_core_identity(payload, hello, model):
     assert ClashAPI._infer_core_model(payload, hello) == model
-    api = ClashAPI("http://localhost/", "")
+    api = ClashAPI("http://localhost/", "", session=AsyncMock())
     api.async_request = AsyncMock(side_effect=[payload, hello or {}])
     version = await api.get_version()
     assert version.model == model
@@ -64,11 +64,9 @@ async def test_response_reading(aiohttp_server, body, line, expected):
     app = web.Application()
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
-    api = ClashAPI(str(server.make_url("/")), "token")
-    try:
+    async with aiohttp.ClientSession() as session:
+        api = ClashAPI(str(server.make_url("/")), "token", session=session)
         assert await api.async_request("GET", "", read_line=line) == expected
-    finally:
-        await api.async_close()
 
 
 @pytest.mark.parametrize(
@@ -87,8 +85,8 @@ async def test_http_errors(aiohttp_server, status, body, error):
     app = web.Application()
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
-    api = ClashAPI(str(server.make_url("/")), "")
-    try:
+    async with aiohttp.ClientSession() as session:
+        api = ClashAPI(str(server.make_url("/")), "", session=session)
         with pytest.raises(error):
             await api.async_request("GET", "")
         outcome = await api._probe_http_endpoint("GET", "", read_line=1)
@@ -98,8 +96,6 @@ async def test_http_errors(aiohttp_server, status, body, error):
             assert outcome.status_code == 404
         else:
             assert isinstance(outcome.error, error)
-    finally:
-        await api.async_close()
 
 
 @pytest.mark.parametrize(
@@ -123,7 +119,7 @@ async def test_transport_errors_and_cancellation(failure, expected):
 
 
 async def test_capability_cache_and_probe_outcomes(monkeypatch):
-    api = ClashAPI("http://localhost/", "", capabilities={})
+    api = ClashAPI("http://localhost/", "", session=AsyncMock(), capabilities={})
     mode = "supported"
     calls = Counter()
 
@@ -167,6 +163,7 @@ async def test_polling_fallback_and_partial_errors(monkeypatch):
     api = ClashAPI(
         "http://localhost/",
         "",
+        session=AsyncMock(),
         capabilities={
             "traffic": True,
             "http_traffic": True,
@@ -208,8 +205,7 @@ async def test_polling_fallback_and_partial_errors(monkeypatch):
     assert Counter(calls) == Counter(["ws", "traffic", "proxies"])
 
 
-@pytest.mark.parametrize("owned", [True, False])
-async def test_session_ownership(aiohttp_server, owned):
+async def test_client_uses_caller_owned_session(aiohttp_server):
     async def handler(request):
         return web.json_response({"ok": True})
 
@@ -217,13 +213,10 @@ async def test_session_ownership(aiohttp_server, owned):
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
     async with aiohttp.ClientSession() as shared:
-        api = ClashAPI(str(server.make_url("/")), "", session=None if owned else shared)
+        api = ClashAPI(str(server.make_url("/")), "", session=shared)
         await api.async_request("GET", "")
-        session = api._session
-        await api.async_close()
-        await api.async_close()
-        assert session.closed is owned
         assert not shared.closed
+    assert shared.closed
 
 
 @pytest.mark.parametrize("mode", ["text", "binary", "timeout", "cancel"])

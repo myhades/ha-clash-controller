@@ -3,10 +3,10 @@
 from .capabilities import CapabilityReport, EndpointCapability
 from .client import ClashAPI
 from .exceptions import (
-    APITimeoutError,
     APIAuthError,
     APIClientError,
     APIConnectionError,
+    APITimeoutError,
     ClashAPIError,
 )
 from .models import FetchResult, VersionInfo

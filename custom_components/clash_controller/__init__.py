@@ -19,6 +19,7 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
 ]
 
+
 @dataclass
 class RuntimeData:
     """Class to hold integration data."""
@@ -91,10 +92,6 @@ async def async_unload_entry(
 ) -> bool:
     """Unload a config entry."""
 
-    runtime_data: RuntimeData = config_entry.runtime_data
-    coordinator = runtime_data.coordinator
-    if coordinator:
-        await coordinator.api.async_close()
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS
     )
