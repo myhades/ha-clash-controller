@@ -306,6 +306,25 @@ async def test_stored_auth_failure_starts_reauthentication(hass, backend):
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
+async def test_polling_auth_failure_starts_reauthentication(hass, backend):
+    entry = await load_entry(hass, backend)
+    api = backend[1][HOST]
+    api.async_fetch_data.side_effect = None
+    api.async_fetch_data.return_value = FetchResult(
+        {}, {"traffic": APIAuthError("invalid")}
+    )
+
+    await poll(hass)
+
+    assert entry.state is ConfigEntryState.LOADED
+    upload = hass.states.get(entity_id(hass, entry, "_upload_speed"))
+    assert upload.state == STATE_UNAVAILABLE
+    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert len(flows) == 1
+    assert flows[0]["context"]["source"] == "reauth"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
 async def test_numeric_entities_and_missing_values(hass, backend):
     entry = await load_entry(hass, backend)
     api = backend[1][HOST]
