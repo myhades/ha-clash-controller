@@ -75,8 +75,8 @@ def backend(monkeypatch):
                 },
                 available_endpoints=[],
                 payload=deepcopy(PAYLOAD),
-                connected=AsyncMock(return_value=True),
-                get_version=AsyncMock(
+                async_validate_connection=AsyncMock(return_value=None),
+                async_get_version=AsyncMock(
                     return_value=VersionInfo(
                         model="Mihomo", version="test", meta="Meta Core"
                     )
@@ -88,7 +88,7 @@ def backend(monkeypatch):
             async def fetch():
                 return FetchResult(deepcopy(api.payload), {})
 
-            api.fetch_data = AsyncMock(side_effect=fetch)
+            api.async_fetch_data = AsyncMock(side_effect=fetch)
             api.async_detect_capabilities = AsyncMock(
                 return_value=CapabilityReport(dict(api.capabilities), {})
             )
@@ -145,7 +145,7 @@ async def poll(hass, seconds=11):
 )
 async def test_config_flow_errors(hass, backend, error, key):
     api = backend[0](HOST, "")
-    api.connected.side_effect = error
+    api.async_validate_connection.side_effect = error
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}, data=dict(INPUT)
     )
@@ -197,20 +197,20 @@ async def test_flow_identity_reload_and_cleanup(hass, backend):
             for item in er.async_entries_for_config_entry(registry, entry.entry_id)
         } == before
         api.async_detect_capabilities.assert_awaited_with(force=True)
-        api.fetch_data.reset_mock()
-        api.connected.reset_mock()
-        api.get_version.reset_mock()
+        api.async_fetch_data.reset_mock()
+        api.async_validate_connection.reset_mock()
+        api.async_get_version.reset_mock()
         api.async_detect_capabilities.reset_mock()
         await poll(hass, 61)
-        api.fetch_data.assert_awaited_once()
-        api.connected.assert_not_awaited()
-        api.get_version.assert_not_awaited()
+        api.async_fetch_data.assert_awaited_once()
+        api.async_validate_connection.assert_not_awaited()
+        api.async_get_version.assert_not_awaited()
         api.async_detect_capabilities.assert_not_awaited()
         assert await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()
-        api.fetch_data.reset_mock()
+        api.async_fetch_data.reset_mock()
         await poll(hass, 180)
-        api.fetch_data.assert_not_awaited()
+        api.async_fetch_data.assert_not_awaited()
         assert hass.services.async_services_for_domain(DOMAIN)
 
 
@@ -239,14 +239,14 @@ async def test_polling_outage_and_recovery(hass, backend, scope):
 
 async def test_offline_start_retries_without_probing(hass, backend):
     api = backend[0](HOST, "")
-    api.connected.side_effect = APIConnectionError("offline")
+    api.async_validate_connection.side_effect = APIConnectionError("offline")
     entry = MockConfigEntry(domain=DOMAIN, title="controller", data=dict(INPUT))
     entry.add_to_hass(hass)
     assert not await hass.config_entries.async_setup(entry.entry_id)
     assert entry.state is ConfigEntryState.SETUP_RETRY
     api.async_detect_capabilities.assert_not_awaited()
-    api.fetch_data.assert_not_awaited()
-    api.connected.side_effect = None
+    api.async_fetch_data.assert_not_awaited()
+    api.async_validate_connection.side_effect = None
     await poll(hass, 120)
     assert entry.state is ConfigEntryState.LOADED
 
@@ -280,11 +280,11 @@ async def test_options_and_streaming_isolation(hass, backend):
         "streaming_detection": True,
         "bearer_token": "new-token",
     }
-    api.connected.side_effect = APIAuthError("invalid")
+    api.async_validate_connection.side_effect = APIAuthError("invalid")
     flow = await hass.config_entries.options.async_init(entry.entry_id, data=options)
     assert flow["errors"] == {"base": "invalid_token"}
     assert entry.data["bearer_token"] == INPUT["bearer_token"]
-    api.connected.side_effect = None
+    api.async_validate_connection.side_effect = None
     with patch(
         "custom_components.clash_controller.coordinator.StreamingDetector"
     ) as detector:

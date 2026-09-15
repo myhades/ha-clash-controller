@@ -128,7 +128,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
     async def _async_setup(self) -> None:
         """Load data that remains stable for this coordinator instance."""
         try:
-            await self.api.connected()
+            await self.api.async_validate_connection()
         except (
             APIAuthError,
             APIClientError,
@@ -141,7 +141,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
 
     async def _get_device(self) -> DeviceInfo:
         """Generate a device object."""
-        version_info = await self.api.get_version()
+        version_info = await self.api.async_get_version()
         model = version_info.model
         lowered_model = model.lower()
         manufacturer = (
@@ -172,7 +172,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         _LOGGER.debug("Start fetching data from Clash.")
 
         try:
-            result = await self.api.fetch_data()
+            result = await self.api.async_fetch_data()
             response = result.data if isinstance(result, FetchResult) else result
             if self.streaming_detection:
                 response["streaming"] = await self.streaming_detector.async_fetch_data()

@@ -38,7 +38,7 @@ async def test_core_identity(payload, hello, model):
     assert ClashAPI._infer_core_model(payload, hello) == model
     api = ClashAPI("http://localhost/", "", session=AsyncMock())
     api.async_request = AsyncMock(side_effect=[payload, hello or {}])
-    version = await api.get_version()
+    version = await api.async_get_version()
     assert version.model == model
     assert version.version == payload.get("version", "unknown")
     assert dict(version) == {
@@ -188,20 +188,20 @@ async def test_polling_fallback_and_partial_errors(monkeypatch):
 
     monkeypatch.setattr(api, "async_ws_request", ws)
     monkeypatch.setattr(api, "async_request", http)
-    result = await api.fetch_data()
+    result = await api.async_fetch_data()
     assert result.data == {"traffic": {"up": 0, "down": 1}}
     assert set(result.errors) == {"proxies"}
     assert Counter(calls) == Counter(["ws", "traffic", "proxies"])
     calls.clear()
-    await api.fetch_data()
+    await api.async_fetch_data()
     assert Counter(calls) == Counter(["traffic", "proxies"])
     broken = {"http"}
     calls.clear()
-    assert "traffic" in (await api.fetch_data()).data
+    assert "traffic" in (await api.async_fetch_data()).data
     assert Counter(calls) == Counter(["traffic", "ws", "proxies"])
     broken = {"http", "ws"}
     calls.clear()
-    assert set((await api.fetch_data()).errors) == {"traffic", "proxies"}
+    assert set((await api.async_fetch_data()).errors) == {"traffic", "proxies"}
     assert Counter(calls) == Counter(["ws", "traffic", "proxies"])
 
 

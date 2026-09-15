@@ -46,7 +46,7 @@ _LOGGER = logging.getLogger(__name__)
 async def _test_connection(api: ClashAPI):
     errors = {}
     try:
-        await api.connected()
+        await api.async_validate_connection()
     except APIAuthError:
         errors["base"] = "invalid_token"
     except APITimeoutError:

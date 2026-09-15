@@ -60,7 +60,7 @@ class ClashAPI:
 
     @property
     def available_endpoints(self) -> Optional[list[tuple[str, dict[str, Any]]]]:
-        """Return currently available entity polling endpoints."""
+        """Return currently available data polling endpoints."""
         return self._available_endpoints
 
     @property
@@ -499,7 +499,7 @@ class ClashAPI:
         )
         return response or {}
 
-    async def connected(self) -> bool:
+    async def async_validate_connection(self) -> None:
         """Check if API connection is successful by reading /version."""
         response = await self._request("GET", "version")
         if "version" not in response:
@@ -507,7 +507,6 @@ class ClashAPI:
                 "Missing version key in response. Is this endpoint running Clash?"
             )
         self._version_response = dict(response)
-        return True
 
     @staticmethod
     def _infer_core_model(
@@ -542,7 +541,7 @@ class ClashAPI:
             return "Meta-compatible core"
         return "Clash-compatible core"
 
-    async def get_version(self) -> VersionInfo:
+    async def async_get_version(self) -> VersionInfo:
         """Get normalized core version data."""
         response = self._version_response
         if response is None:
@@ -557,13 +556,6 @@ class ClashAPI:
             model=model,
             version=response.get("version", "unknown"),
         )
-
-    async def async_detect_available_endpoints(
-        self,
-    ) -> list[tuple[str, dict[str, Any]]]:
-        """Backward-compatible wrapper for old startup flow."""
-        await self.async_detect_capabilities()
-        return self._available_endpoints or []
 
     async def _fetch_endpoint_with_fallback(
         self,
@@ -624,7 +616,7 @@ class ClashAPI:
             raise last_error
         raise APIClientError(f"No supported transport for {endpoint}")
 
-    async def fetch_data(self) -> FetchResult:
+    async def async_fetch_data(self) -> FetchResult:
         """Get all endpoint data needed by the coordinator."""
 
         capabilities = await self.async_detect_capabilities()

@@ -22,9 +22,9 @@ async def test_core_contract(running_core: RunningCore):
         api = ClashAPI(running_core.url, SECRET, session=session)
         bad_api = ClashAPI(running_core.url, "wrong-secret", session=session)
         with pytest.raises(APIAuthError):
-            await bad_api.connected()
-        assert await api.connected()
-        assert (await api.get_version())["version"] != "unknown"
+            await bad_api.async_validate_connection()
+        await api.async_validate_connection()
+        assert (await api.async_get_version()).version != "unknown"
         capabilities = await api.async_detect_capabilities(force=True)
         for name, expected in running_core.expected_capabilities.items():
             assert capabilities[name] is expected, (
@@ -32,7 +32,7 @@ async def test_core_contract(running_core: RunningCore):
                 name,
                 capabilities,
             )
-        result = await api.fetch_data()
+        result = await api.async_fetch_data()
         assert not result.errors, result.errors
         assert {"up", "down"} <= result["traffic"].keys()
         assert {"uploadTotal", "downloadTotal", "connections"} <= result[
