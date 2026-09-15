@@ -44,25 +44,24 @@ async def async_setup_entry(
     coordinator = ClashControllerCoordinator(hass, config_entry)
     await coordinator.async_config_entry_first_refresh()
 
-    if coordinator.last_update_success:
-        capabilities = coordinator.api.capabilities or {}
-        available_endpoints = coordinator.api.available_endpoints or []
-        normalized_endpoints = [list(item) for item in available_endpoints]
-        if (
-            config_entry.data.get("capabilities") != capabilities
-            or config_entry.data.get("available_endpoints") != normalized_endpoints
-        ):
-            hass.config_entries.async_update_entry(
-                config_entry,
-                data={
-                    **config_entry.data,
-                    "available_endpoints": normalized_endpoints,
-                    "capabilities": capabilities,
-                },
-            )
-
     config_entry.runtime_data = RuntimeData(coordinator)
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
+    return True
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
+) -> bool:
+    """Remove obsolete runtime state from persisted entry data."""
+    if config_entry.version == 1 and config_entry.minor_version < 2:
+        data = dict(config_entry.data)
+        data.pop("available_endpoints", None)
+        data.pop("capabilities", None)
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=data,
+            minor_version=2,
+        )
     return True
 
 async def async_remove_config_entry_device(

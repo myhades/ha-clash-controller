@@ -61,6 +61,8 @@ async def _test_connection(api: ClashAPI):
 class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Clash Controller."""
 
+    MINOR_VERSION = 2
+
     def _normalize_url(self, api_url: str, use_ssl: bool):
         if api_url.startswith("http://") or api_url.startswith("https://"):
             if use_ssl and api_url.startswith("http://"):
@@ -107,8 +109,6 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
             errors = await _test_connection(api)
             if "base" not in errors:
-                user_input["capabilities"] = {}
-                user_input["available_endpoints"] = []
                 return self.async_create_entry(title=api_url, data=user_input)
 
         return self.async_show_form(

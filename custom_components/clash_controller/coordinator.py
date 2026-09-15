@@ -106,19 +106,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             update_interval=timedelta(seconds=self.poll_interval),
         )
 
-        stored_endpoints = self.config_entry.data.get("available_endpoints")
-        available_endpoints = (
-            [tuple(item) for item in stored_endpoints] if stored_endpoints else None
-        )
-        stored_capabilities = self.config_entry.data.get("capabilities")
-        capabilities = (
-            dict(stored_capabilities) if isinstance(stored_capabilities, dict) else None
-        )
         self.api = ClashAPI(
             host=self.host,
             token=self.token,
-            available_endpoints=available_endpoints,
-            capabilities=capabilities,
             session=async_get_clientsession(hass, verify_ssl=not self.allow_unsafe),
         )
         self.streaming_detector = StreamingDetector(async_get_clientsession(hass))

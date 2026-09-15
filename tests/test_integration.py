@@ -166,6 +166,8 @@ async def test_flow_identity_reload_and_cleanup(hass, backend):
         assert result["type"] is FlowResultType.CREATE_ENTRY
         await hass.async_block_till_done()
         entry = result["result"]
+        assert "capabilities" not in entry.data
+        assert "available_endpoints" not in entry.data
         api = backend[1][HOST]
         registry = er.async_get(hass)
         before = {
@@ -212,6 +214,28 @@ async def test_flow_identity_reload_and_cleanup(hass, backend):
         await poll(hass, 180)
         api.async_fetch_data.assert_not_awaited()
         assert hass.services.async_services_for_domain(DOMAIN)
+
+
+async def test_entry_migration_removes_runtime_probe_data(hass, backend):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="controller",
+        data={
+            **INPUT,
+            "capabilities": {"traffic": True},
+            "available_endpoints": [["traffic", {"read_line": 1}]],
+        },
+        version=1,
+        minor_version=1,
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert entry.minor_version == 2
+    assert "capabilities" not in entry.data
+    assert "available_endpoints" not in entry.data
+    assert await hass.config_entries.async_unload(entry.entry_id)
 
 
 @pytest.mark.parametrize("scope", ["partial", "all"])
