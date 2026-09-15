@@ -303,30 +303,23 @@ async def test_numeric_entities_and_missing_values(hass, backend):
 
 async def test_options_and_streaming_isolation(hass, backend):
     entry = await load_entry(hass, backend)
-    api = backend[1][HOST]
     options = {
         "scan_interval": 20,
         "concurrent_connections": 3,
         "streaming_detection": True,
-        "bearer_token": "new-token",
     }
-    api.async_validate_connection.side_effect = APIAuthError("invalid")
-    flow = await hass.config_entries.options.async_init(entry.entry_id, data=options)
-    assert flow["errors"] == {"base": "invalid_token"}
-    assert entry.data["bearer_token"] == INPUT["bearer_token"]
-    api.async_validate_connection.side_effect = None
     with patch(
         "custom_components.clash_controller.coordinator.StreamingDetector"
     ) as detector:
         detector.return_value.async_fetch_data = AsyncMock(
             return_value={"netflix": {"status_code": 0, "latency": -1}}
         )
-        result = await hass.config_entries.options.async_configure(
-            flow["flow_id"], user_input=options
+        result = await hass.config_entries.options.async_init(
+            entry.entry_id, data=options
         )
         assert result["type"] is FlowResultType.CREATE_ENTRY
         await hass.async_block_till_done()
-        assert entry.data["bearer_token"] == "new-token"
+        assert entry.data["bearer_token"] == INPUT["bearer_token"]
         assert entry.runtime_data.coordinator.update_interval == timedelta(seconds=20)
         assert entry.runtime_data.coordinator.concurrent_connections == 3
         detector.return_value.async_fetch_data.assert_awaited()

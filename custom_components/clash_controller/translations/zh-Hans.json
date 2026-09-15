@@ -27,7 +27,7 @@
             "timed_out": "API 连接超时， Clash 是否在运行？"
         },
         "abort": {
-            "already_configured": "此位置的实例已添加，请使用配置按钮更新令牌并修改设置。",
+            "already_configured": "此位置的实例已添加。",
             "reauth_successful": "身份验证已成功更新。"
         }
     },
@@ -39,7 +39,6 @@
                 "data": {
                     "scan_interval": "扫描间隔（秒）",
                     "concurrent_connections": "并发连接数",
-                    "bearer_token": "更新令牌（留空则跳过）",
                     "streaming_detection": "流媒体可用性检测"
                 }
             }

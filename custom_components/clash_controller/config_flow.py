@@ -11,7 +11,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    OptionsFlow,
+    OptionsFlowWithReload,
 )
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import callback
@@ -162,54 +162,23 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> ClashControllerOptionsFlow:
         """Return the options flow handler."""
-        return ClashControllerOptionsFlow(config_entry)
+        return ClashControllerOptionsFlow()
 
 
-class ClashControllerOptionsFlow(OptionsFlow):
+class ClashControllerOptionsFlow(OptionsFlowWithReload):
     """Handle options for Clash Controller."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.entry_id = config_entry.entry_id
-        self.options = dict(config_entry.options)
-
-    async def async_step_init(self, user_input=None):
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle options flow."""
 
-        errors = {}
-        config_entry = self.hass.config_entries.async_get_entry(self.entry_id)
-
         if user_input is not None:
-            token = user_input.get(CONF_BEAR_TOKEN)
-
-            if token:
-                api_url = config_entry.data[CONF_API_URL]
-                allow_unsafe = config_entry.data.get(CONF_ALLOW_UNSAFE, False)
-                api = ClashAPI(
-                    api_url,
-                    token,
-                    session=async_get_clientsession(
-                        self.hass, verify_ssl=not allow_unsafe
-                    ),
-                )
-                errors = await _test_connection(api)
-
-            if errors.get("base") != "invalid_token":
-                options = dict(config_entry.options)
-                options[CONF_SCAN_INTERVAL] = user_input[CONF_SCAN_INTERVAL]
-                options[CONF_CONCURRENT_CONNECTIONS] = user_input[
-                    CONF_CONCURRENT_CONNECTIONS
-                ]
-                options[CONF_STREAMING_DETECTION] = user_input[CONF_STREAMING_DETECTION]
-
-                if token:
-                    data = dict(config_entry.data)
-                    data[CONF_BEAR_TOKEN] = token
-                    self.hass.config_entries.async_update_entry(config_entry, data=data)
-
-                return self.async_create_entry(title="", data=options)
+            return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
             step_id="init",
@@ -217,26 +186,24 @@ class ClashControllerOptionsFlow(OptionsFlow):
                 {
                     vol.Required(
                         CONF_SCAN_INTERVAL,
-                        default=self.options.get(
+                        default=self.config_entry.options.get(
                             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
                         ),
                     ): vol.All(vol.Coerce(int), vol.Clamp(min=MIN_SCAN_INTERVAL)),
                     vol.Required(
                         CONF_CONCURRENT_CONNECTIONS,
-                        default=self.options.get(
+                        default=self.config_entry.options.get(
                             CONF_CONCURRENT_CONNECTIONS, DEFAULT_CONCURRENT_CONNECTIONS
                         ),
                     ): vol.All(
                         vol.Coerce(int), vol.Clamp(min=MIN_CONCURRENT_CONNECTIONS)
                     ),
-                    vol.Optional(CONF_BEAR_TOKEN, default=""): cv.string,
                     vol.Optional(
                         CONF_STREAMING_DETECTION,
-                        default=self.options.get(
+                        default=self.config_entry.options.get(
                             CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION
                         ),
                     ): cv.boolean,
                 }
             ),
-            errors=errors,
         )

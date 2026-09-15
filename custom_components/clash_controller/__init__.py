@@ -61,21 +61,9 @@ async def async_setup_entry(
                 },
             )
 
-    config_entry.async_on_unload(
-        config_entry.add_update_listener(_async_update_listener)
-    )
     config_entry.runtime_data = RuntimeData(coordinator)
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     return True
-
-
-async def _async_update_listener(
-    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
-) -> None:
-    """Handle config options update."""
-
-    await hass.config_entries.async_reload(config_entry.entry_id)
-
 
 async def async_remove_config_entry_device(
     hass: HomeAssistant,
