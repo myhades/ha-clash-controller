@@ -3,22 +3,27 @@
 import asyncio
 import json
 from urllib.parse import quote
-import voluptuous as vol
 
+import voluptuous as vol
 from homeassistant.const import CONF_DEVICE_ID
-from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+)
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
 from .const import (
+    API_CALL_SERVICE_NAME,
+    DNS_QUERY_SERVICE_NAME,
     DOMAIN,
-    REBOOT_CORE_SERVICE_NAME,
     FILTER_CONNECTION_SERVICE_NAME,
     GET_LATENCY_SERVICE_NAME,
-    DNS_QUERY_SERVICE_NAME,
     GET_RULE_SERVICE_NAME,
-    API_CALL_SERVICE_NAME,
+    REBOOT_CORE_SERVICE_NAME,
 )
 from .coordinator import ClashControllerCoordinator
 
@@ -106,7 +111,7 @@ class ClashServicesSetup:
         self.hass = hass
         self.setup_services()
 
-    def setup_services(self):
+    def setup_services(self) -> None:
         """Initialise the services."""
 
         def _register(
@@ -224,7 +229,9 @@ class ClashServicesSetup:
         except Exception as err:
             raise self._action_error("reboot_failed", err) from err
 
-    async def async_filter_connection_service(self, service_call: ServiceCall) -> dict:
+    async def async_filter_connection_service(
+        self, service_call: ServiceCall
+    ) -> ServiceResponse:
         """Execute service call for filtering connection."""
 
         coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
@@ -295,7 +302,9 @@ class ClashServicesSetup:
 
         return service_response
 
-    async def async_get_latency_service(self, service_call: ServiceCall) -> dict:
+    async def async_get_latency_service(
+        self, service_call: ServiceCall
+    ) -> ServiceResponse:
         """Execute service call for getting latency."""
 
         coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
@@ -341,7 +350,9 @@ class ClashServicesSetup:
         else:
             return {"latency": {node: response.get("delay", [])}}
 
-    async def async_dns_query_service(self, service_call: ServiceCall) -> dict:
+    async def async_dns_query_service(
+        self, service_call: ServiceCall
+    ) -> ServiceResponse:
         """Execute service call for performing a DNS query."""
 
         coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
@@ -358,7 +369,9 @@ class ClashServicesSetup:
         except Exception as err:
             raise self._action_error("dns_query_failed", err) from err
 
-    async def async_get_rule_service(self, service_call: ServiceCall) -> dict:
+    async def async_get_rule_service(
+        self, service_call: ServiceCall
+    ) -> ServiceResponse:
         """Execute service call for performing a DNS query."""
 
         coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
@@ -398,7 +411,9 @@ class ClashServicesSetup:
 
         return service_response
 
-    async def async_api_call_service(self, service_call: ServiceCall) -> None:
+    async def async_api_call_service(
+        self, service_call: ServiceCall
+    ) -> ServiceResponse:
         """Execute service call for calling API."""
 
         coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
