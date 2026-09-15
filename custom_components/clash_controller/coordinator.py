@@ -137,22 +137,14 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             if ("mihomo" in lowered_model or "meta" in lowered_model)
             else "Clash"
         )
-        device_kwargs = {
-            "manufacturer": manufacturer,
-            "model": model,
-            "sw_version": version_info.version,
-            "identifiers": {(DOMAIN, self.device_id)},
-        }
-        try:
-            return DeviceInfo(
-                translation_key="clash_instance",
-                **device_kwargs,
-            )
-        except TypeError:
-            return DeviceInfo(
-                name="Clash Instance",
-                **device_kwargs,
-            )
+        return DeviceInfo(
+            configuration_url=self.host,
+            identifiers={(DOMAIN, self.device_id)},
+            manufacturer=manufacturer,
+            model=model,
+            sw_version=version_info.version,
+            translation_key="clash_instance",
+        )
 
     async def _async_update_data(self):
         """Fetch data from API endpoint."""

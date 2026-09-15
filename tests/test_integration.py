@@ -181,6 +181,7 @@ async def test_flow_identity_reload_and_cleanup(hass, backend):
             0
         ]
         assert device.identifiers == {(DOMAIN, "http___controller_local_9090__device")}
+        assert device.configuration_url == HOST
         duplicate = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": "user"}, data=dict(INPUT)
         )
