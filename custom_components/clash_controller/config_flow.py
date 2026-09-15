@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, Mapping
 
 import voluptuous as vol
 from homeassistant.config_entries import (
@@ -121,6 +121,42 @@ class ClashControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_ALLOW_UNSAFE, default=allow_unsafe): cv.boolean,
                 }
             ),
+            errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Start reauthentication for an existing entry."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Validate and store replacement credentials."""
+        errors: dict[str, str] = {}
+        config_entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            token = user_input[CONF_BEAR_TOKEN]
+            allow_unsafe = config_entry.data.get(CONF_ALLOW_UNSAFE, False)
+            api = ClashAPI(
+                config_entry.data[CONF_API_URL],
+                token,
+                session=async_get_clientsession(
+                    self.hass, verify_ssl=not allow_unsafe
+                ),
+            )
+            errors = await _test_connection(api)
+            if not errors:
+                return self.async_update_reload_and_abort(
+                    config_entry,
+                    data_updates={CONF_BEAR_TOKEN: token},
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required(CONF_BEAR_TOKEN): cv.string}),
             errors=errors,
         )
 

@@ -11,6 +11,13 @@
                     "allow_unsafe": "Allow Unsafe SSL Certificates"
                 },
                 "description": "Enter the API address and token for your Clash instance. Examples: 192.168.1.1:9090, clash.mydomain.com. If the location is an IP address, make sure it's static."
+            },
+            "reauth_confirm": {
+                "title": "Update Clash credentials",
+                "description": "The stored API token is no longer accepted. Enter a valid token to reconnect.",
+                "data": {
+                    "bearer_token": "Token"
+                }
             }
         },        
         "error": {
@@ -20,7 +27,8 @@
             "timed_out": "API connection timed out. Is Clash running?"
         },
         "abort": {
-            "already_configured": "The instance at this location is already added. Use configure button to update token and modify settings."
+            "already_configured": "The instance at this location is already added. Use configure button to update token and modify settings.",
+            "reauth_successful": "Authentication was updated successfully."
           }
     },
     "options": {

@@ -12,6 +12,7 @@ from urllib.parse import quote
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
@@ -129,12 +130,9 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         """Load data that remains stable for this coordinator instance."""
         try:
             await self.api.async_validate_connection()
-        except (
-            APIAuthError,
-            APIClientError,
-            APIConnectionError,
-            APITimeoutError,
-        ) as err:
+        except APIAuthError as err:
+            raise ConfigEntryAuthFailed from err
+        except (APIClientError, APIConnectionError, APITimeoutError) as err:
             raise UpdateFailed(err) from err
         await self.api.async_detect_capabilities(force=True)
         self.device = await self._get_device()
@@ -174,12 +172,18 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         try:
             result = await self.api.async_fetch_data()
             response = result.data if isinstance(result, FetchResult) else result
+            if isinstance(result, FetchResult) and any(
+                isinstance(error, APIAuthError) for error in result.errors.values()
+            ):
+                raise ConfigEntryAuthFailed
             if self.streaming_detection:
                 response["streaming"] = await self.streaming_detector.async_fetch_data()
             if not CORE_DATA_KEYS.intersection(response):
                 if isinstance(result, FetchResult) and result.errors:
                     raise UpdateFailed(next(iter(result.errors.values())))
                 raise UpdateFailed("No data returned from Clash core.")
+        except ConfigEntryAuthFailed:
+            raise
         except Exception as err:
             raise UpdateFailed(err) from err
 

@@ -251,6 +251,36 @@ async def test_offline_start_retries_without_probing(hass, backend):
     assert entry.state is ConfigEntryState.LOADED
 
 
+async def test_stored_auth_failure_starts_reauthentication(hass, backend):
+    api = backend[0](HOST, "")
+    api.async_validate_connection.side_effect = APIAuthError("invalid")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="controller",
+        data=dict(INPUT),
+        unique_id=HOST,
+    )
+    entry.add_to_hass(hass)
+
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert len(flows) == 1
+    assert flows[0]["context"]["source"] == "reauth"
+
+    api.async_validate_connection.side_effect = None
+    result = await hass.config_entries.flow.async_configure(
+        flows[0]["flow_id"], {"bearer_token": "replacement-token"}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data["bearer_token"] == "replacement-token"
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert entry.state is ConfigEntryState.LOADED
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
 async def test_numeric_entities_and_missing_values(hass, backend):
     entry = await load_entry(hass, backend)
     api = backend[1][HOST]
