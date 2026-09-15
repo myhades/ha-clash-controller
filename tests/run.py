@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run integration, core compatibility, and release validation."""
+"""Run Home Assistant integration, system, and release validation."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def main() -> int:
     parser.add_argument(
         "layer",
         choices=("integration", "system", "release"),
-        help="integration runs API/HA contracts; system runs real cores; release runs both plus process recovery",
+        help="integration runs HA contracts; system runs real cores; release runs both plus process recovery",
     )
     parser.add_argument(
         "--core",

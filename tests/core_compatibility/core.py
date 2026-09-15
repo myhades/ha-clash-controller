@@ -1,4 +1,4 @@
-"""Compatibility contract tests against a real Clash-compatible core."""
+"""Real-core fixtures for Home Assistant system tests."""
 
 from __future__ import annotations
 
@@ -32,11 +32,6 @@ class RunningCore:
     work_dir: Path
     config_path: Path
     process: subprocess.Popen[str]
-
-    @property
-    def expected_capabilities(self) -> dict[str, bool]:
-        manifest = json.loads(Path(__file__).with_name("assets.json").read_text())
-        return manifest[self.name]["capabilities"]
 
     def stop(self) -> None:
         """Stop the core without discarding its test configuration."""
