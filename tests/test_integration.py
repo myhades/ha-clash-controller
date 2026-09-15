@@ -554,3 +554,27 @@ async def test_select_and_button_writes(hass, backend):
         blocking=True,
     )
     api.async_request.assert_awaited_once_with("POST", "cache/fakeip/flush")
+
+
+async def test_entity_action_errors_are_translated(hass, backend):
+    entry = await load_entry(hass, backend)
+    api = backend[1][HOST]
+    api.async_request.side_effect = APIConnectionError("offline")
+
+    with pytest.raises(HomeAssistantError) as error:
+        await hass.services.async_call(
+            "select",
+            "select_option",
+            {"entity_id": entity_id(hass, entry, "_a/b_中文"), "option": "REJECT"},
+            blocking=True,
+        )
+    assert error.value.translation_key == "proxy_group_selection_failed"
+
+    with pytest.raises(HomeAssistantError) as error:
+        await hass.services.async_call(
+            "button",
+            "press",
+            {"entity_id": entity_id(hass, entry, "_flush_fakeip_cache")},
+            blocking=True,
+        )
+    assert error.value.translation_key == "button_action_failed"

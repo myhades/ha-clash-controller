@@ -154,6 +154,21 @@
         },
         "api_call_failed": {
             "message": "执行 API 调用时出错：{error}"
+        },
+        "proxy_group_selection_failed": {
+            "message": "无法将策略组 {group} 切换到 {node}：{error}"
+        },
+        "empty_mode": {
+            "message": "代理模式不能为空。"
+        },
+        "mode_selection_failed": {
+            "message": "无法将代理模式切换到 {mode}：{error}"
+        },
+        "button_action_missing": {
+            "message": "此按钮未定义操作。"
+        },
+        "button_action_failed": {
+            "message": "执行 {action} 失败：{error}"
         }
     },
     "services": {

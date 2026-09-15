@@ -5,11 +5,12 @@ from urllib.parse import quote
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import ClashControllerConfigEntry
 from .base import BaseEntity
+from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,7 +72,15 @@ class GroupSelect(SelectEntityBase):
                 json_data={"name": node},
             )
         except Exception as err:
-            raise HomeAssistantError(f"Failed to set proxy group {group} to {node}.") from err
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="proxy_group_selection_failed",
+                translation_placeholders={
+                    "error": str(err),
+                    "group": group,
+                    "node": node,
+                },
+            ) from err
         self.entity_data.state = option
         self.async_write_ha_state()
 
@@ -87,7 +96,10 @@ class CoreModeSelect(SelectEntityBase):
         """Change Clash running mode."""
         mode = option.strip()
         if not mode:
-            raise HomeAssistantError("Mode cannot be empty.")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="empty_mode",
+            )
         try:
             await self.coordinator.api.async_request(
                 "PATCH",
@@ -102,6 +114,10 @@ class CoreModeSelect(SelectEntityBase):
                     json_data={"mode": mode},
                 )
             except Exception as err:
-                raise HomeAssistantError(f"Failed to set mode to {mode}.") from err
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="mode_selection_failed",
+                    translation_placeholders={"error": str(err), "mode": mode},
+                ) from err
         self.entity_data.state = mode
         self.async_write_ha_state()

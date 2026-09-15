@@ -9,6 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import ClashControllerConfigEntry
 from .base import BaseEntity
+from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,11 +52,19 @@ class ButtonEntityBase(BaseEntity, ButtonEntity):
         args = action.get("args", [])
         kwargs = action.get("kwargs", {})
         if method is None:
-            raise HomeAssistantError("No action defined for this button.")
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="button_action_missing",
+            )
         try:
             await method(*args, **kwargs)
         except Exception as err:
             raise HomeAssistantError(
-                f"Failed to execute {self.entity_data.unique_key}."
+                translation_domain=DOMAIN,
+                translation_key="button_action_failed",
+                translation_placeholders={
+                    "action": self.entity_data.unique_key or "unknown",
+                    "error": str(err),
+                },
             ) from err
         self.async_write_ha_state()

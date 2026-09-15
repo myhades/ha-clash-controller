@@ -154,6 +154,21 @@
         },
         "api_call_failed": {
             "message": "Error performing the API call: {error}"
+        },
+        "proxy_group_selection_failed": {
+            "message": "Failed to set proxy group {group} to {node}: {error}"
+        },
+        "empty_mode": {
+            "message": "The proxy mode cannot be empty."
+        },
+        "mode_selection_failed": {
+            "message": "Failed to set proxy mode to {mode}: {error}"
+        },
+        "button_action_missing": {
+            "message": "No action is defined for this button."
+        },
+        "button_action_failed": {
+            "message": "Failed to execute {action}: {error}"
         }
     },
     "services": {
