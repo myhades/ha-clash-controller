@@ -2,4 +2,4 @@ pytest==9.0.3
 pytest-asyncio==1.4.0
 pytest-homeassistant-custom-component==0.13.365
 PyYAML==6.0.3
-clash-api @ git+https://github.com/myhades/clash-api.git@62b4b75dc08b4560bf807e80bb97465630f53eb7
+clash-controller-api @ git+https://github.com/myhades/clash-controller-api.git@3e90f538c2c4af8078a49aa40ae5aa0dfd9f1ef3

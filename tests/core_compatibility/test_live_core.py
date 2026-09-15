@@ -5,7 +5,7 @@ from urllib.parse import quote
 import aiohttp
 import pytest
 
-from clash_api import (
+from clash_controller_api import (
     APIAuthError,
     APIClientError,
     ClashAPI,
