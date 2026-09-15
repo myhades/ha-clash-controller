@@ -9,7 +9,7 @@
     "iot_class": "local_polling",
     "issue_tracker": "https://github.com/myhades/ha-clash-controller/issues",
     "requirements": [
-        "clash-controller-api @ git+https://github.com/myhades/clashapi.git@3c6c8f9ca23bc92e53861160f17146e62c17fd49"
+        "clash-api @ git+https://github.com/myhades/clash-api.git@62b4b75dc08b4560bf807e80bb97465630f53eb7"
     ],
     "version": "0.2.1"
 }

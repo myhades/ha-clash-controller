@@ -19,7 +19,7 @@ from pytest_homeassistant_custom_component.common import (
     async_fire_time_changed,
 )
 
-from clashapi import (
+from clash_api import (
     APIAuthError,
     APIClientError,
     APIConnectionError,
