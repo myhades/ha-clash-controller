@@ -19,7 +19,7 @@ PLATFORMS: list[Platform] = [
 ]
 
 
-@dataclass
+@dataclass(slots=True)
 class RuntimeData:
     """Class to hold integration data."""
 

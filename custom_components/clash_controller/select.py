@@ -6,7 +6,7 @@ from urllib.parse import quote
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import ClashControllerConfigEntry
 from .base import BaseEntity
@@ -19,8 +19,9 @@ PARALLEL_UPDATES = 0
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ClashControllerConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-):
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up select entities for a config entry."""
 
     coordinator: ClashControllerCoordinator = config_entry.runtime_data.coordinator
 
@@ -47,10 +48,12 @@ class SelectEntityBase(BaseEntity, SelectEntity):
     
     @property
     def current_option(self) -> str | None:
+        """Return the currently selected option."""
         return self.entity_data.state
 
     @property
     def options(self) -> list[str] | None:
+        """Return available select options."""
         return self.entity_data.options
 
 class GroupSelect(SelectEntityBase):

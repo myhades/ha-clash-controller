@@ -1,6 +1,7 @@
 """Base entity for Clash Controller."""
 
 import logging
+from typing import Any
 
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -10,7 +11,7 @@ from .coordinator import ClashControllerCoordinator, ClashEntityData
 _LOGGER = logging.getLogger(__name__)
 
 
-class BaseEntity(CoordinatorEntity):
+class BaseEntity(CoordinatorEntity[ClashControllerCoordinator]):
     """Base entity class."""
 
     coordinator: ClashControllerCoordinator
@@ -61,11 +62,6 @@ class BaseEntity(CoordinatorEntity):
         self.async_write_ha_state()
     
     @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> dict[str, Any] | None:
         """Default extra state attributes for base sensor."""
         return self.entity_data.attributes
-
-    @property
-    def translation_key(self):
-        """Return translation key with backward-compatible behavior."""
-        return self.entity_data.translation_key
