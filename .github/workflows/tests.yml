@@ -26,7 +26,7 @@ jobs:
           cache-dependency-path: tests/requirements.txt
       - name: Install test dependencies
         run: pip install -r tests/requirements.txt
-      - name: Run API and Home Assistant contracts
+      - name: Run Home Assistant contracts
         run: python tests/run.py integration
 
   core-compatibility:
