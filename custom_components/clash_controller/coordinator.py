@@ -21,7 +21,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
@@ -29,19 +29,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import (
     CONF_CONCURRENT_CONNECTIONS,
-    CONF_STREAMING_DETECTION,
-    CONF_STREAMING_PROXY,
     DEFAULT_CONCURRENT_CONNECTIONS,
     DEFAULT_SCAN_INTERVAL,
-    DEFAULT_STREAMING_DETECTION,
     DOMAIN,
-)
-from .streaming import (
-    SERVICE_TABLE,
-    STREAMING_STATES,
-    InvalidStreamingProxyError,
-    StreamingDetector,
-    parse_streaming_proxy,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -88,6 +78,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
     """A coordinator to fetch data from the Clash API."""
 
     device: DeviceInfo | None = None
+    device_registry_id: str | None = None
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         """Initialize the Clash Controller coordinator."""
@@ -103,15 +94,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         self.concurrent_connections = config_entry.options.get(
             CONF_CONCURRENT_CONNECTIONS, DEFAULT_CONCURRENT_CONNECTIONS
         )
-        self.streaming_detection = config_entry.options.get(
-            CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION
-        )
-        self.streaming_proxy = config_entry.options.get(CONF_STREAMING_PROXY, "")
-        self.streaming_device = DeviceInfo(
-            identifiers={(DOMAIN, f"{self.device_id}_streaming")},
-            translation_key="streaming_detection",
-            via_device=(DOMAIN, self.device_id),
-        )
 
         super().__init__(
             hass,
@@ -126,18 +108,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             token=self.token,
             session=async_get_clientsession(hass, verify_ssl=not self.allow_unsafe),
         )
-        self.streaming_detector: StreamingDetector | None = None
-        if self.streaming_detection:
-            try:
-                proxy = parse_streaming_proxy(self.streaming_proxy)
-            except InvalidStreamingProxyError:
-                _LOGGER.warning(
-                    "Streaming detection is enabled without a valid proxy address"
-                )
-            else:
-                self.streaming_detector = StreamingDetector(
-                    async_get_clientsession(hass), proxy
-                )
         self._data_by_name: dict[str, ClashEntityData] = {}
         self._data_by_unique_id: dict[str, ClashEntityData] = {}
         _LOGGER.debug(f"Clash API initialized for coordinator {self.name}")
@@ -152,6 +122,14 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             raise UpdateFailed(err) from err
         await self.api.async_detect_capabilities(force=True)
         self.device = await self._get_device()
+        self.device_registry_id = (
+            dr.async_get(self.hass)
+            .async_get_or_create(
+                config_entry_id=self.config_entry.entry_id,
+                **self.device,
+            )
+            .id
+        )
 
     async def _get_device(self) -> DeviceInfo:
         """Generate a device object."""
@@ -184,12 +162,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 isinstance(error, APIAuthError) for error in result.errors.values()
             ):
                 raise ConfigEntryAuthFailed
-            if self.streaming_detector is not None:
-                response["streaming"] = await self.streaming_detector.async_fetch_data(
-                    self._enabled_streaming_services()
-                )
-            elif self.streaming_detection:
-                response["streaming"] = {}
             if not CORE_DATA_KEYS.intersection(response):
                 if isinstance(result, FetchResult) and result.errors:
                     raise UpdateFailed(next(iter(result.errors.values())))
@@ -209,27 +181,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             raise UpdateFailed("Empty response")
 
         return data
-
-    def _streaming_unique_id(self, service: str) -> str:
-        """Return the stable entity unique ID for a streaming service."""
-        return f"{self.device_id}_streaming_detection_{service}"
-
-    def _enabled_streaming_services(self) -> set[str]:
-        """Return services whose entity-registry entries are enabled."""
-        registry = er.async_get(self.hass)
-        enabled: set[str] = set()
-        for service, service_info in SERVICE_TABLE.items():
-            entity_id = registry.async_get_entity_id(
-                "sensor", DOMAIN, self._streaming_unique_id(service)
-            )
-            if entity_id is None:
-                if service_info.enabled_default:
-                    enabled.add(service)
-                continue
-            entry = registry.async_get(entity_id)
-            if entry is not None and entry.disabled_by is None:
-                enabled.add(service)
-        return enabled
 
     @staticmethod
     def _slugify(value: str) -> str:
@@ -264,10 +215,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                     ),
                 )
             )
-        entity_data.extend(
-            self._build_streaming_entities(response.get("streaming", {}))
-        )
-
         if capabilities.get("cache_fakeip_flush"):
             entity_data.append(self._build_fakeip_button())
         if capabilities.get("cache_dns_flush"):
@@ -568,39 +515,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                         unique_key=f"provider_healthcheck_{slug}",
                     )
                 )
-
-        return entity_data
-
-    def _build_streaming_entities(
-        self,
-        streaming: dict[str, Any],
-    ) -> list[ClashEntityData]:
-        """Create streaming detection entities."""
-        if not self.streaming_detection:
-            return []
-
-        entity_data: list[ClashEntityData] = []
-
-        for service, service_info in SERVICE_TABLE.items():
-            details = streaming.get(service, {})
-            attributes = {
-                key: value for key, value in details.items() if key != "state"
-            }
-            entity_data.append(
-                ClashEntityData(
-                    name=None,
-                    state=details.get("state", "unknown"),
-                    icon=service_info.icon,
-                    attributes=attributes,
-                    options=STREAMING_STATES,
-                    entity_type="streaming_detection",
-                    translation_key="streaming_service",
-                    translation_placeholders={"service": service_info.name},
-                    enabled_default=service_info.enabled_default,
-                    unique_key=service,
-                    device_info=self.streaming_device,
-                )
-            )
 
         return entity_data
 

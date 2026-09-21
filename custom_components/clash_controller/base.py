@@ -7,18 +7,22 @@ from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import ClashControllerCoordinator, ClashEntityData
+from .streaming_coordinator import StreamingCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class BaseEntity(CoordinatorEntity[ClashControllerCoordinator]):
+type EntityCoordinator = ClashControllerCoordinator | StreamingCoordinator
+
+
+class BaseEntity(CoordinatorEntity[EntityCoordinator]):
     """Base entity class."""
 
-    coordinator: ClashControllerCoordinator
+    coordinator: EntityCoordinator
     _attr_has_entity_name = True
 
     def __init__(
-        self, coordinator: ClashControllerCoordinator, entity_data: ClashEntityData
+        self, coordinator: EntityCoordinator, entity_data: ClashEntityData
     ) -> None:
         super().__init__(coordinator)
         self.entity_data = entity_data
@@ -33,9 +37,13 @@ class BaseEntity(CoordinatorEntity[ClashControllerCoordinator]):
         self._attr_icon = self.entity_data.icon
         self._attr_translation_key = self.entity_data.translation_key
         if self.entity_data.translation_placeholders is not None:
-            self._attr_translation_placeholders = self.entity_data.translation_placeholders
+            self._attr_translation_placeholders = (
+                self.entity_data.translation_placeholders
+            )
         if self.entity_data.enabled_default is not None:
-            self._attr_entity_registry_enabled_default = self.entity_data.enabled_default
+            self._attr_entity_registry_enabled_default = (
+                self.entity_data.enabled_default
+            )
         self._attr_entity_category = self.entity_data.entity_category
         self._attr_available = True
 
@@ -60,7 +68,7 @@ class BaseEntity(CoordinatorEntity[ClashControllerCoordinator]):
         else:
             self._attr_available = False
         self.async_write_ha_state()
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Default extra state attributes for base sensor."""

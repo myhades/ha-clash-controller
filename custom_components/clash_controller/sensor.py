@@ -87,6 +87,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up sensors for a config entry."""
     coordinator: ClashControllerCoordinator = config_entry.runtime_data.coordinator
+    streaming_coordinator = config_entry.runtime_data.streaming_coordinator
 
     sensors: list[SensorEntity] = []
     for entity_data in coordinator.data:
@@ -94,8 +95,12 @@ async def async_setup_entry(
             sensors.append(ClashNumericSensor(coordinator, entity_data, description))
         elif entity_data.entity_type == "proxy_group_sensor":
             sensors.append(GroupSensor(coordinator, entity_data))
-        elif entity_data.entity_type == "streaming_detection":
-            sensors.append(StreamingSensor(coordinator, entity_data))
+
+    if streaming_coordinator is not None:
+        sensors.extend(
+            StreamingSensor(streaming_coordinator, entity_data)
+            for entity_data in streaming_coordinator.data
+        )
 
     async_add_entities(sensors)
 

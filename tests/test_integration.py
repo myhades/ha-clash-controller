@@ -163,7 +163,7 @@ async def test_config_flow_errors(hass, backend, error, key):
 
 async def test_flow_identity_reload_and_cleanup(hass, backend):
     with patch(
-        "custom_components.clash_controller.coordinator.StreamingDetector"
+        "custom_components.clash_controller.streaming_coordinator.StreamingDetector"
     ) as streaming:
         streaming.return_value.async_fetch_data = AsyncMock(return_value={})
         result = await hass.config_entries.flow.async_init(
@@ -366,7 +366,7 @@ async def test_options_and_streaming_isolation(hass, backend):
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "custom_components.clash_controller.coordinator.StreamingDetector"
+            "custom_components.clash_controller.streaming_coordinator.StreamingDetector"
         ) as detector,
     ):
         detector.return_value.async_fetch_data = AsyncMock(
@@ -386,6 +386,9 @@ async def test_options_and_streaming_isolation(hass, backend):
         assert entry.data["bearer_token"] == INPUT["bearer_token"]
         assert entry.runtime_data.coordinator.update_interval == timedelta(seconds=20)
         assert entry.runtime_data.coordinator.concurrent_connections == 3
+        streaming_coordinator = entry.runtime_data.streaming_coordinator
+        assert streaming_coordinator is not None
+        assert streaming_coordinator.update_interval == timedelta(seconds=20)
         proxy = detector.call_args.args[1]
         assert str(proxy.url) == "http://proxy.local:7890"
         assert proxy.headers == {
@@ -399,9 +402,14 @@ async def test_options_and_streaming_isolation(hass, backend):
             if "_streaming_detection_" in item.unique_id
         ]
         assert len(streaming_entries) == 8
-        assert next(
-            item for item in streaming_entries if item.unique_id.endswith("_netflix")
-        ).disabled_by is None
+        assert (
+            next(
+                item
+                for item in streaming_entries
+                if item.unique_id.endswith("_netflix")
+            ).disabled_by
+            is None
+        )
         assert all(
             item.disabled_by is not None
             for item in streaming_entries
@@ -422,9 +430,8 @@ async def test_options_and_streaming_isolation(hass, backend):
         )
         assert streaming_device.via_device_id == clash_device.id
         assert all(item.device_id == streaming_device.id for item in streaming_entries)
-        assert hass.states.get(
-            entity_id(hass, entry, "_streaming_detection_netflix")
-        ).state == "available"
+        netflix_entity_id = entity_id(hass, entry, "_streaming_detection_netflix")
+        assert hass.states.get(netflix_entity_id).state == "available"
 
         prime_video = next(
             item
@@ -433,10 +440,18 @@ async def test_options_and_streaming_isolation(hass, backend):
         )
         registry.async_update_entity(prime_video.entity_id, disabled_by=None)
         detector.return_value.async_fetch_data.reset_mock()
-        await entry.runtime_data.coordinator.async_refresh()
+        api = backend[1][HOST]
+        api.async_fetch_data.reset_mock()
+        await streaming_coordinator.async_refresh()
         detector.return_value.async_fetch_data.assert_awaited_with(
             {"netflix", "prime_video"}
         )
+        api.async_fetch_data.assert_not_awaited()
+
+        detector.return_value.async_fetch_data.reset_mock()
+        await entry.runtime_data.coordinator.async_refresh()
+        api.async_fetch_data.assert_awaited_once()
+        detector.return_value.async_fetch_data.assert_not_awaited()
         assert (
             hass.states.get(entity_id(hass, entry, "_upload_speed")).state
             != STATE_UNAVAILABLE

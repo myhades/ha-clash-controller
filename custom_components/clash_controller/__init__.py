@@ -9,8 +9,13 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
+from .const import (
+    CONF_STREAMING_DETECTION,
+    DEFAULT_STREAMING_DETECTION,
+)
 from .coordinator import ClashControllerCoordinator
 from .services import ClashServicesSetup
+from .streaming_coordinator import StreamingCoordinator
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -24,6 +29,7 @@ class RuntimeData:
     """Class to hold integration data."""
 
     coordinator: ClashControllerCoordinator
+    streaming_coordinator: StreamingCoordinator | None
 
 
 type ClashControllerConfigEntry = ConfigEntry[RuntimeData]
@@ -43,7 +49,18 @@ async def async_setup_entry(
     coordinator = ClashControllerCoordinator(hass, config_entry)
     await coordinator.async_config_entry_first_refresh()
 
-    config_entry.runtime_data = RuntimeData(coordinator)
+    streaming_coordinator: StreamingCoordinator | None = None
+    if config_entry.options.get(CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION):
+        assert coordinator.device_registry_id is not None
+        streaming_coordinator = StreamingCoordinator(
+            hass,
+            config_entry,
+            coordinator.device_id,
+            coordinator.device_registry_id,
+        )
+        await streaming_coordinator.async_config_entry_first_refresh()
+
+    config_entry.runtime_data = RuntimeData(coordinator, streaming_coordinator)
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     return True
 
@@ -62,6 +79,7 @@ async def async_migrate_entry(
             minor_version=2,
         )
     return True
+
 
 async def async_unload_entry(
     hass: HomeAssistant, config_entry: ClashControllerConfigEntry
