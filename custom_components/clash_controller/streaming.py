@@ -3,28 +3,101 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
 import time
+from collections.abc import Awaitable, Callable, Collection
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 import aiohttp
 from yarl import URL
 
 _LOGGER = logging.getLogger(__name__)
 
-SERVICE_TABLE = {
-    "netflix": {
-        "name": "Netflix",
-        "icon": "mdi:netflix",
-        "url": "https://www.netflix.com/title/81280792",
-        "code_table": {
-            200: "unlocked",
-            403: "blocked",
-            404: "original_only",
-            0: "unavailable",
-        },
-    },
+STATE_AVAILABLE = "available"
+STATE_LIMITED = "limited"
+STATE_BLOCKED = "blocked"
+STATE_UNKNOWN = "unknown"
+STREAMING_STATES = [STATE_AVAILABLE, STATE_LIMITED, STATE_BLOCKED, STATE_UNKNOWN]
+
+_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/140.0.0.0 Safari/537.36"
+)
+_BROWSER_HEADERS = {
+    "Accept-Language": "en-US,en;q=0.9",
+    "User-Agent": _USER_AGENT,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class StreamingService:
+    """Static definition for a streaming service sensor."""
+
+    name: str
+    icon: str
+    url: str
+    checker: str
+    enabled_default: bool = False
+
+
+SERVICE_TABLE: dict[str, StreamingService] = {
+    "netflix": StreamingService(
+        name="Netflix",
+        icon="mdi:netflix",
+        url="https://www.netflix.com/title/81280792",
+        checker="_async_check_netflix",
+        enabled_default=True,
+    ),
+    "youtube_premium": StreamingService(
+        name="YouTube Premium",
+        icon="mdi:youtube",
+        url="https://www.youtube.com/premium",
+        checker="_async_check_youtube_premium",
+    ),
+    "prime_video": StreamingService(
+        name="Prime Video",
+        icon="mdi:amazon",
+        url="https://www.primevideo.com/",
+        checker="_async_check_prime_video",
+    ),
+    "bbc_iplayer": StreamingService(
+        name="BBC iPlayer",
+        icon="mdi:television-play",
+        url=(
+            "https://open.live.bbc.co.uk/mediaselector/6/select/version/2.0/"
+            "mediaset/pc/vpid/bbc_one_london/format/json/jsfunc/JS_callbacks0"
+        ),
+        checker="_async_check_bbc_iplayer",
+    ),
+    "paramount_plus": StreamingService(
+        name="Paramount+",
+        icon="mdi:mountain",
+        url="https://www.paramountplus.com/",
+        checker="_async_check_paramount_plus",
+    ),
+    "peacock": StreamingService(
+        name="Peacock",
+        icon="mdi:television",
+        url="https://www.peacocktv.com/",
+        checker="_async_check_peacock",
+    ),
+    "max": StreamingService(
+        name="Max",
+        icon="mdi:alpha-m-circle",
+        url="https://www.max.com/",
+        checker="_async_check_max",
+    ),
+    "dazn": StreamingService(
+        name="DAZN",
+        icon="mdi:soccer",
+        url="https://startup.core.indazn.com/misl/v5/Startup",
+        checker="_async_check_dazn",
+    ),
 }
 
 
@@ -50,6 +123,17 @@ class StreamingProxy:
 
     url: URL
     headers: dict[str, str] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class StreamingResponse:
+    """Response data shared by service-specific checkers."""
+
+    status_code: int
+    latency: float
+    url: str
+    body: str = ""
+    error: str | None = None
 
 
 def parse_streaming_proxy(value: str) -> StreamingProxy:
@@ -105,7 +189,7 @@ class StreamingDetector:
         """Verify that the proxy can reach the streaming test endpoint."""
         try:
             async with self._session.get(
-                SERVICE_TABLE["netflix"]["url"],
+                SERVICE_TABLE["netflix"].url,
                 proxy=self._proxy.url,
                 proxy_headers=self._proxy.headers,
                 timeout=aiohttp.ClientTimeout(total=10),
@@ -119,38 +203,224 @@ class StreamingDetector:
                 raise StreamingProxyAuthError from err
             raise StreamingProxyConnectionError from err
 
-    async def async_get_url_status(
-        self, url: str, headers: dict[str, str] | None = None
-    ) -> dict[str, float | int]:
-        """Get the status code and latency to a third-party URL."""
-        request_headers = headers or {}
+    async def _async_request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        json_data: dict[str, Any] | None = None,
+    ) -> StreamingResponse:
+        """Send a request and retain only the data required by checkers."""
         start_time = time.monotonic()
         try:
-            async with self._session.get(
+            async with self._session.request(
+                method,
                 url,
-                headers=request_headers,
+                headers=headers,
+                json=json_data,
                 proxy=self._proxy.url,
                 proxy_headers=self._proxy.headers,
                 timeout=aiohttp.ClientTimeout(total=10),
             ) as response:
-                duration = time.monotonic() - start_time
-                return {
-                    "latency": duration,
-                    "status_code": 0 if response.status == 407 else response.status,
-                }
+                body = await response.text(errors="replace")
+                return StreamingResponse(
+                    status_code=response.status,
+                    latency=time.monotonic() - start_time,
+                    url=str(response.url),
+                    body=body,
+                    error="proxy_authentication" if response.status == 407 else None,
+                )
         except asyncio.TimeoutError:
-            return {"latency": -1, "status_code": 0}
+            return StreamingResponse(
+                status_code=0,
+                latency=time.monotonic() - start_time,
+                url=url,
+                error="timeout",
+            )
         except aiohttp.ClientError as err:
-            duration = time.monotonic() - start_time
-            _LOGGER.debug("Error getting status code for %s: %s", url, err)
-            return {"latency": duration, "status_code": 0}
+            _LOGGER.debug("Error checking streaming URL %s: %s", url, err)
+            return StreamingResponse(
+                status_code=0,
+                latency=time.monotonic() - start_time,
+                url=url,
+                error="connection_error",
+            )
 
-    async def async_fetch_data(self) -> dict[str, Any]:
-        """Fetch availability data for configured streaming services."""
-        results = await asyncio.gather(
-            *[
-                self.async_get_url_status(details["url"])
-                for details in SERVICE_TABLE.values()
-            ]
+    @staticmethod
+    def _result(
+        response: StreamingResponse,
+        state: str,
+        **attributes: Any,
+    ) -> dict[str, Any]:
+        """Build the normalized result exposed by every checker."""
+        result: dict[str, Any] = {
+            "state": state,
+            "latency": response.latency,
+            "status_code": response.status_code,
+        }
+        if response.error is not None:
+            result["reason"] = response.error
+        result.update(attributes)
+        return result
+
+    async def _async_check_netflix(self) -> dict[str, Any]:
+        response = await self._async_request(
+            "GET", SERVICE_TABLE["netflix"].url, headers=_BROWSER_HEADERS
         )
-        return dict(zip(SERVICE_TABLE, results))
+        if response.status_code == 200:
+            return self._result(response, STATE_AVAILABLE, access_level="full_catalog")
+        if response.status_code == 404:
+            return self._result(response, STATE_LIMITED, access_level="originals_only")
+        if response.status_code == 403:
+            return self._result(response, STATE_BLOCKED)
+        return self._result(response, STATE_UNKNOWN)
+
+    async def _async_check_youtube_premium(self) -> dict[str, Any]:
+        response = await self._async_request(
+            "GET", SERVICE_TABLE["youtube_premium"].url, headers=_BROWSER_HEADERS
+        )
+        body = response.body
+        region_match = re.search(r'"INNERTUBE_CONTEXT_GL"\s*:\s*"([^"]+)"', body)
+        region = region_match.group(1).upper() if region_match else None
+        if "www.google.cn" in body:
+            return self._result(response, STATE_BLOCKED, region="CN")
+        if "premium is not available in your country" in body.lower():
+            return self._result(response, STATE_BLOCKED, **self._region(region))
+        if "ad-free" in body.lower():
+            return self._result(response, STATE_AVAILABLE, **self._region(region))
+        return self._result(response, STATE_UNKNOWN, **self._region(region))
+
+    async def _async_check_prime_video(self) -> dict[str, Any]:
+        response = await self._async_request(
+            "GET", SERVICE_TABLE["prime_video"].url, headers=_BROWSER_HEADERS
+        )
+        region_match = re.search(r'"currentTerritory"\s*:\s*"([^"]+)"', response.body)
+        region = region_match.group(1).upper() if region_match else None
+        restricted = re.search(
+            r'"?isServiceRestricted"?\s*:\s*true', response.body, re.IGNORECASE
+        )
+        if restricted:
+            return self._result(response, STATE_BLOCKED, **self._region(region))
+        if region is not None:
+            return self._result(response, STATE_AVAILABLE, region=region)
+        return self._result(response, STATE_UNKNOWN)
+
+    async def _async_check_bbc_iplayer(self) -> dict[str, Any]:
+        response = await self._async_request(
+            "GET", SERVICE_TABLE["bbc_iplayer"].url, headers=_BROWSER_HEADERS
+        )
+        body = response.body.lower()
+        if "geolocation" in body:
+            return self._result(response, STATE_BLOCKED)
+        if "vs-hls-push-uk" in body:
+            return self._result(response, STATE_AVAILABLE, region="GB")
+        return self._result(response, STATE_UNKNOWN)
+
+    async def _async_check_paramount_plus(self) -> dict[str, Any]:
+        response = await self._async_request(
+            "GET", SERVICE_TABLE["paramount_plus"].url, headers=_BROWSER_HEADERS
+        )
+        path_parts = [part for part in URL(response.url).path.split("/") if part]
+        path_prefix = path_parts[0].upper() if path_parts else ""
+        if path_prefix == "INTL":
+            return self._result(response, STATE_BLOCKED, redirect_url=response.url)
+        if response.status_code == 200:
+            region = path_prefix if len(path_prefix) == 2 else "US"
+            return self._result(
+                response,
+                STATE_AVAILABLE,
+                region=region,
+                redirect_url=response.url,
+            )
+        return self._result(response, STATE_UNKNOWN, redirect_url=response.url)
+
+    async def _async_check_peacock(self) -> dict[str, Any]:
+        response = await self._async_request(
+            "GET", SERVICE_TABLE["peacock"].url, headers=_BROWSER_HEADERS
+        )
+        if "unavailable" in response.url.lower():
+            return self._result(response, STATE_BLOCKED, redirect_url=response.url)
+        if response.status_code == 200:
+            return self._result(response, STATE_AVAILABLE, redirect_url=response.url)
+        return self._result(response, STATE_UNKNOWN, redirect_url=response.url)
+
+    async def _async_check_max(self) -> dict[str, Any]:
+        response = await self._async_request(
+            "GET", SERVICE_TABLE["max"].url, headers=_BROWSER_HEADERS
+        )
+        region_match = re.search(r"countryCode=([A-Z]{2})", response.body)
+        if region_match is None:
+            return self._result(response, STATE_UNKNOWN)
+        region = region_match.group(1)
+        supported_regions = {
+            match.upper()
+            for match in re.findall(r'"url"\s*:\s*"/([a-z]{2})/[a-z]{2}"', response.body)
+        }
+        supported_regions.add("US")
+        return self._result(
+            response,
+            STATE_AVAILABLE if region in supported_regions else STATE_BLOCKED,
+            region=region,
+        )
+
+    async def _async_check_dazn(self) -> dict[str, Any]:
+        headers = {
+            **_BROWSER_HEADERS,
+            "Accept": "*/*",
+            "Content-Type": "application/json",
+            "Origin": "https://www.dazn.com",
+            "Referer": "https://www.dazn.com/",
+            "X-Session-Id": str(uuid4()),
+        }
+        response = await self._async_request(
+            "POST",
+            SERVICE_TABLE["dazn"].url,
+            headers=headers,
+            json_data={
+                "Version": "2",
+                "LandingPageKey": "generic",
+                "Languages": "en-US",
+                "Platform": "web",
+                "Manufacturer": "",
+                "PromoCode": "",
+                "PlatformAttributes": {},
+            },
+        )
+        if "security policy has been breached" in response.body.lower():
+            return self._result(response, STATE_BLOCKED, reason="security_policy")
+        try:
+            payload = json.loads(response.body)
+        except (TypeError, ValueError):
+            return self._result(response, STATE_UNKNOWN)
+        region_data = payload.get("Region", payload)
+        if not isinstance(region_data, dict):
+            return self._result(response, STATE_UNKNOWN)
+        allowed = region_data.get("isAllowed")
+        region = region_data.get("GeolocatedCountry")
+        attributes = self._region(region.upper() if isinstance(region, str) else None)
+        if allowed is True:
+            return self._result(response, STATE_AVAILABLE, **attributes)
+        if allowed is False:
+            return self._result(response, STATE_BLOCKED, **attributes)
+        return self._result(response, STATE_UNKNOWN, **attributes)
+
+    @staticmethod
+    def _region(region: str | None) -> dict[str, str]:
+        """Return an optional region attribute without exposing null values."""
+        return {"region": region} if region else {}
+
+    async def async_fetch_data(
+        self, services: Collection[str] | None = None
+    ) -> dict[str, dict[str, Any]]:
+        """Fetch availability data for enabled streaming services."""
+        selected = [
+            service
+            for service in SERVICE_TABLE
+            if services is None or service in services
+        ]
+        checkers: list[Callable[[], Awaitable[dict[str, Any]]]] = [
+            getattr(self, SERVICE_TABLE[service].checker) for service in selected
+        ]
+        results = await asyncio.gather(*(checker() for checker in checkers))
+        return dict(zip(selected, results))

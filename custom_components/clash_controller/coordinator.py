@@ -21,6 +21,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
@@ -37,6 +38,7 @@ from .const import (
 )
 from .streaming import (
     SERVICE_TABLE,
+    STREAMING_STATES,
     InvalidStreamingProxyError,
     StreamingDetector,
     parse_streaming_proxy,
@@ -177,12 +179,11 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             ):
                 raise ConfigEntryAuthFailed
             if self.streaming_detector is not None:
-                response["streaming"] = await self.streaming_detector.async_fetch_data()
+                response["streaming"] = await self.streaming_detector.async_fetch_data(
+                    self._enabled_streaming_services()
+                )
             elif self.streaming_detection:
-                response["streaming"] = {
-                    service: {"status_code": 0, "latency": -1}
-                    for service in SERVICE_TABLE
-                }
+                response["streaming"] = {}
             if not CORE_DATA_KEYS.intersection(response):
                 if isinstance(result, FetchResult) and result.errors:
                     raise UpdateFailed(next(iter(result.errors.values())))
@@ -202,6 +203,27 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             raise UpdateFailed("Empty response")
 
         return data
+
+    def _streaming_unique_id(self, service: str) -> str:
+        """Return the stable entity unique ID for a streaming service."""
+        return f"{self.device_id}_streaming_detection_{service}"
+
+    def _enabled_streaming_services(self) -> set[str]:
+        """Return services whose entity-registry entries are enabled."""
+        registry = er.async_get(self.hass)
+        enabled: set[str] = set()
+        for service, service_info in SERVICE_TABLE.items():
+            entity_id = registry.async_get_entity_id(
+                "sensor", DOMAIN, self._streaming_unique_id(service)
+            )
+            if entity_id is None:
+                if service_info.enabled_default:
+                    enabled.add(service)
+                continue
+            entry = registry.async_get(entity_id)
+            if entry is not None and entry.disabled_by is None:
+                enabled.add(service)
+        return enabled
 
     @staticmethod
     def _slugify(value: str) -> str:
@@ -548,26 +570,28 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         streaming: dict[str, Any],
     ) -> list[ClashEntityData]:
         """Create streaming detection entities."""
-        if not self.streaming_detection or not streaming:
+        if not self.streaming_detection:
             return []
 
         entity_data: list[ClashEntityData] = []
 
-        for service, details in streaming.items():
-            service_info = SERVICE_TABLE.get(service)
-            code_table = service_info.get("code_table", {})
-            code = details.get("status_code", 0)
+        for service, service_info in SERVICE_TABLE.items():
+            details = streaming.get(service, {})
+            attributes = {
+                key: value for key, value in details.items() if key != "state"
+            }
             entity_data.append(
                 ClashEntityData(
                     name=None,
-                    state=code_table.get(code, "unknown"),
-                    attributes=details,
-                    options=list(code_table.values()) + ["unknown"],
+                    state=details.get("state", "unknown"),
+                    icon=service_info.icon,
+                    attributes=attributes,
+                    options=STREAMING_STATES,
                     entity_type="streaming_detection",
-                    translation_key=service + "_service",
-                    unique_key=(service_info.get("name", service))
-                    .lower()
-                    .replace(" ", "_"),
+                    translation_key="streaming_service",
+                    translation_placeholders={"service": service_info.name},
+                    enabled_default=service_info.enabled_default,
+                    unique_key=service,
                 )
             )
 

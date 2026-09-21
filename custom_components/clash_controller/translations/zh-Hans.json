@@ -108,12 +108,13 @@
           "rule_provider_count": {
             "name": "规则集合数量"
           },
-          "netflix_service": {
-            "name": "Netflix",
+          "streaming_service": {
+            "name": "{service}",
             "state":{
-                "unlocked": "已解锁",
-                "blocked": "未解锁",
-                "original_only": "仅限原创"
+                "available": "可用",
+                "limited": "受限",
+                "blocked": "受阻",
+                "unknown": "未知"
             },
             "state_attributes":{
                 "latency": {
@@ -121,6 +122,18 @@
                 },
                 "status_code": {
                     "name": "状态码"
+                },
+                "region": {
+                    "name": "地区"
+                },
+                "access_level": {
+                    "name": "访问级别"
+                },
+                "reason": {
+                    "name": "原因"
+                },
+                "redirect_url": {
+                    "name": "重定向地址"
                 }
             }
           }

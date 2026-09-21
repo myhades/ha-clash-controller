@@ -108,12 +108,13 @@
           "rule_provider_count": {
             "name": "Rule Provider Count"
           },
-          "netflix_service": {
-            "name": "Netflix",
+          "streaming_service": {
+            "name": "{service}",
             "state":{
-                "unlocked": "Unlocked",
+                "available": "Available",
+                "limited": "Limited",
                 "blocked": "Blocked",
-                "original_only": "Original Only"
+                "unknown": "Unknown"
             },
             "state_attributes":{
                 "latency": {
@@ -121,6 +122,18 @@
                 },
                 "status_code": {
                     "name": "Status Code"
+                },
+                "region": {
+                    "name": "Region"
+                },
+                "access_level": {
+                    "name": "Access Level"
+                },
+                "reason": {
+                    "name": "Reason"
+                },
+                "redirect_url": {
+                    "name": "Redirect URL"
                 }
             }
           }
