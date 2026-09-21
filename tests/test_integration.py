@@ -6,7 +6,17 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+import aiohttp
 import pytest
+from clash_controller_api import (
+    APIAuthError,
+    APIClientError,
+    APIConnectionError,
+    APITimeoutError,
+    CapabilityReport,
+    FetchResult,
+    VersionInfo,
+)
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.data_entry_flow import FlowResultType
@@ -19,18 +29,14 @@ from pytest_homeassistant_custom_component.common import (
     async_fire_time_changed,
 )
 
-from clash_controller_api import (
-    APIAuthError,
-    APIClientError,
-    APIConnectionError,
-    APITimeoutError,
-    CapabilityReport,
-    FetchResult,
-    VersionInfo,
-)
 from custom_components.clash_controller.const import DOMAIN
 from custom_components.clash_controller.diagnostics import (
     async_get_config_entry_diagnostics,
+)
+from custom_components.clash_controller.streaming import (
+    StreamingProxyAuthError,
+    StreamingProxyConnectionError,
+    StreamingProxyTimeoutError,
 )
 
 HOST = "http://controller.local:9090/"
@@ -351,10 +357,18 @@ async def test_options_and_streaming_isolation(hass, backend):
         "scan_interval": 20,
         "concurrent_connections": 3,
         "streaming_detection": True,
+        "streaming_proxy": "http://user%40name:p%3A%40ss@proxy.local:7890",
     }
-    with patch(
-        "custom_components.clash_controller.coordinator.StreamingDetector"
-    ) as detector:
+    with (
+        patch(
+            "custom_components.clash_controller.config_flow."
+            "StreamingDetector.async_validate_proxy",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.clash_controller.coordinator.StreamingDetector"
+        ) as detector,
+    ):
         detector.return_value.async_fetch_data = AsyncMock(
             return_value={"netflix": {"status_code": 0, "latency": -1}}
         )
@@ -366,6 +380,11 @@ async def test_options_and_streaming_isolation(hass, backend):
         assert entry.data["bearer_token"] == INPUT["bearer_token"]
         assert entry.runtime_data.coordinator.update_interval == timedelta(seconds=20)
         assert entry.runtime_data.coordinator.concurrent_connections == 3
+        proxy = detector.call_args.args[1]
+        assert str(proxy.url) == "http://proxy.local:7890"
+        assert proxy.headers == {
+            "Proxy-Authorization": aiohttp.encode_basic_auth("user@name", "p:@ss")
+        }
         detector.return_value.async_fetch_data.assert_awaited()
         assert (
             hass.states.get(entity_id(hass, entry, "_upload_speed")).state
@@ -373,10 +392,91 @@ async def test_options_and_streaming_isolation(hass, backend):
         )
 
 
+@pytest.mark.parametrize(
+    ("proxy_address", "side_effect", "error_key"),
+    [
+        ("", None, "invalid_proxy"),
+        ("proxy.local", None, "invalid_proxy"),
+        (
+            "proxy.local:7890",
+            StreamingProxyConnectionError(),
+            "cannot_connect_proxy",
+        ),
+        (
+            "proxy.local:7890",
+            StreamingProxyAuthError(),
+            "invalid_proxy_auth",
+        ),
+        (
+            "proxy.local:7890",
+            StreamingProxyTimeoutError(),
+            "proxy_timed_out",
+        ),
+    ],
+)
+async def test_streaming_proxy_options_errors(
+    hass, backend, proxy_address, side_effect, error_key
+):
+    entry = await load_entry(hass, backend)
+    options = {
+        "scan_interval": 20,
+        "concurrent_connections": 3,
+        "streaming_detection": True,
+        "streaming_proxy": proxy_address,
+    }
+
+    with patch(
+        "custom_components.clash_controller.config_flow."
+        "StreamingDetector.async_validate_proxy",
+        new=AsyncMock(side_effect=side_effect),
+    ):
+        result = await hass.config_entries.options.async_init(
+            entry.entry_id, data=options
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": error_key}
+    assert entry.options["streaming_detection"] is False
+
+
+async def test_disabled_streaming_does_not_validate_proxy(hass, backend):
+    entry = await load_entry(hass, backend)
+    options = {
+        "scan_interval": 20,
+        "concurrent_connections": 3,
+        "streaming_detection": False,
+        "streaming_proxy": "not-a-proxy",
+    }
+
+    with patch(
+        "custom_components.clash_controller.config_flow."
+        "StreamingDetector.async_validate_proxy",
+        new=AsyncMock(),
+    ) as validate:
+        result = await hass.config_entries.options.async_init(
+            entry.entry_id, data=options
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    validate.assert_not_awaited()
+
+
 async def test_diagnostics_redaction(hass, backend):
     entry = await load_entry(hass, backend)
+    proxy_address = "proxy-user:proxy-secret@proxy.local:7890"
+    hass.config_entries.async_update_entry(
+        entry,
+        options={**entry.options, "streaming_proxy": proxy_address},
+    )
     output = json.dumps(await async_get_config_entry_diagnostics(hass, entry))
-    for secret in [INPUT["bearer_token"], HOST, "controller.local", "A/B 中文"]:
+    for secret in [
+        INPUT["bearer_token"],
+        HOST,
+        "controller.local",
+        "A/B 中文",
+        proxy_address,
+        "proxy-secret",
+    ]:
         assert secret not in output
 
 
