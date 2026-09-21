@@ -9,6 +9,14 @@ from datetime import timedelta
 from typing import Any
 from urllib.parse import quote
 
+from clash_controller_api import (
+    APIAuthError,
+    APIClientError,
+    APIConnectionError,
+    APITimeoutError,
+    ClashAPI,
+    FetchResult,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
@@ -18,23 +26,21 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from clash_controller_api import (
-    APIAuthError,
-    APIClientError,
-    APIConnectionError,
-    APITimeoutError,
-    ClashAPI,
-    FetchResult,
-)
 from .const import (
     CONF_CONCURRENT_CONNECTIONS,
     CONF_STREAMING_DETECTION,
+    CONF_STREAMING_PROXY,
     DEFAULT_CONCURRENT_CONNECTIONS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_STREAMING_DETECTION,
     DOMAIN,
 )
-from .streaming import SERVICE_TABLE, StreamingDetector
+from .streaming import (
+    SERVICE_TABLE,
+    InvalidStreamingProxyError,
+    StreamingDetector,
+    parse_streaming_proxy,
+)
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_HEALTHCHECK_TIMEOUT_MS = 5000
@@ -97,6 +103,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         self.streaming_detection = config_entry.options.get(
             CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION
         )
+        self.streaming_proxy = config_entry.options.get(CONF_STREAMING_PROXY, "")
 
         super().__init__(
             hass,
@@ -111,7 +118,18 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             token=self.token,
             session=async_get_clientsession(hass, verify_ssl=not self.allow_unsafe),
         )
-        self.streaming_detector = StreamingDetector(async_get_clientsession(hass))
+        self.streaming_detector: StreamingDetector | None = None
+        if self.streaming_detection:
+            try:
+                proxy = parse_streaming_proxy(self.streaming_proxy)
+            except InvalidStreamingProxyError:
+                _LOGGER.warning(
+                    "Streaming detection is enabled without a valid proxy address"
+                )
+            else:
+                self.streaming_detector = StreamingDetector(
+                    async_get_clientsession(hass), proxy
+                )
         self._data_by_name: dict[str, ClashEntityData] = {}
         self._data_by_unique_id: dict[str, ClashEntityData] = {}
         _LOGGER.debug(f"Clash API initialized for coordinator {self.name}")
@@ -158,8 +176,13 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 isinstance(error, APIAuthError) for error in result.errors.values()
             ):
                 raise ConfigEntryAuthFailed
-            if self.streaming_detection:
+            if self.streaming_detector is not None:
                 response["streaming"] = await self.streaming_detector.async_fetch_data()
+            elif self.streaming_detection:
+                response["streaming"] = {
+                    service: {"status_code": 0, "latency": -1}
+                    for service in SERVICE_TABLE
+                }
             if not CORE_DATA_KEYS.intersection(response):
                 if isinstance(result, FetchResult) and result.errors:
                     raise UpdateFailed(next(iter(result.errors.values())))
