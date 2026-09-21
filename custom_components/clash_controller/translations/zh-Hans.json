@@ -55,6 +55,9 @@
     "device": {
         "clash_instance": {
             "name": "Clash 实例"
+        },
+        "streaming_detection": {
+            "name": "流媒体可用性"
         }
     },
     "entity": {

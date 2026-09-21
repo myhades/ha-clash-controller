@@ -81,6 +81,7 @@ class ClashEntityData:
     action: dict[str, Any] | None = None
     unique_key: str | None = None
     unique_id: str = ""
+    device_info: DeviceInfo | None = None
 
 
 class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
@@ -106,6 +107,11 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION
         )
         self.streaming_proxy = config_entry.options.get(CONF_STREAMING_PROXY, "")
+        self.streaming_device = DeviceInfo(
+            identifiers={(DOMAIN, f"{self.device_id}_streaming")},
+            translation_key="streaming_detection",
+            via_device=(DOMAIN, self.device_id),
+        )
 
         super().__init__(
             hass,
@@ -592,6 +598,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                     translation_placeholders={"service": service_info.name},
                     enabled_default=service_info.enabled_default,
                     unique_key=service,
+                    device_info=self.streaming_device,
                 )
             )
 

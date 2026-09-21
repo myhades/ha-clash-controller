@@ -55,6 +55,9 @@
     "device": {
         "clash_instance": {
             "name": "Clash Instance"
+        },
+        "streaming_detection": {
+            "name": "Streaming Availability"
         }
     },
     "entity": {

@@ -22,7 +22,7 @@ class BaseEntity(CoordinatorEntity[ClashControllerCoordinator]):
     ) -> None:
         super().__init__(coordinator)
         self.entity_data = entity_data
-        self._attr_device_info = self.coordinator.device
+        self._attr_device_info = entity_data.device_info or self.coordinator.device
 
         self._entity_name = self.entity_data.name
         self._entity_unique_id = self.entity_data.unique_id

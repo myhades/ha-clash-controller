@@ -370,7 +370,13 @@ async def test_options_and_streaming_isolation(hass, backend):
         ) as detector,
     ):
         detector.return_value.async_fetch_data = AsyncMock(
-            return_value={"netflix": {"status_code": 0, "latency": -1}}
+            return_value={
+                "netflix": {
+                    "state": "available",
+                    "status_code": 200,
+                    "latency": 0.1,
+                }
+            }
         )
         result = await hass.config_entries.options.async_init(
             entry.entry_id, data=options
@@ -385,7 +391,52 @@ async def test_options_and_streaming_isolation(hass, backend):
         assert proxy.headers == {
             "Proxy-Authorization": aiohttp.encode_basic_auth("user@name", "p:@ss")
         }
-        detector.return_value.async_fetch_data.assert_awaited()
+        detector.return_value.async_fetch_data.assert_awaited_with({"netflix"})
+        registry = er.async_get(hass)
+        streaming_entries = [
+            item
+            for item in er.async_entries_for_config_entry(registry, entry.entry_id)
+            if "_streaming_detection_" in item.unique_id
+        ]
+        assert len(streaming_entries) == 8
+        assert next(
+            item for item in streaming_entries if item.unique_id.endswith("_netflix")
+        ).disabled_by is None
+        assert all(
+            item.disabled_by is not None
+            for item in streaming_entries
+            if not item.unique_id.endswith("_netflix")
+        )
+
+        devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+        clash_device = next(
+            item
+            for item in devices
+            if (DOMAIN, "http___controller_local_9090__device") in item.identifiers
+        )
+        streaming_device = next(
+            item
+            for item in devices
+            if (DOMAIN, "http___controller_local_9090__device_streaming")
+            in item.identifiers
+        )
+        assert streaming_device.via_device_id == clash_device.id
+        assert all(item.device_id == streaming_device.id for item in streaming_entries)
+        assert hass.states.get(
+            entity_id(hass, entry, "_streaming_detection_netflix")
+        ).state == "available"
+
+        prime_video = next(
+            item
+            for item in streaming_entries
+            if item.unique_id.endswith("_prime_video")
+        )
+        registry.async_update_entity(prime_video.entity_id, disabled_by=None)
+        detector.return_value.async_fetch_data.reset_mock()
+        await entry.runtime_data.coordinator.async_refresh()
+        detector.return_value.async_fetch_data.assert_awaited_with(
+            {"netflix", "prime_video"}
+        )
         assert (
             hass.states.get(entity_id(hass, entry, "_upload_speed")).state
             != STATE_UNAVAILABLE
