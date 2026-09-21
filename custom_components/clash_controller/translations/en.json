@@ -34,17 +34,22 @@
     "options": {
         "step": {
             "init": {
-                "description": "Modify options of this entry. To detect streaming service availability, Home Assistant must connect through the same proxy being tested.",
+                "description": "A valid HTTP proxy address is required in the format `<address>:<port>`, or `<username>:<password>@<address>:<port>` when authentication is used.",
                 "title": "Clash Controller Options",
                 "data": {
                     "scan_interval": "Scan Interval (seconds)",
                     "concurrent_connections": "Concurrent Connections",
-                    "streaming_detection": "Enable Streaming Service Availability Detection"
+                    "streaming_detection": "Enable Streaming Service Availability Detection",
+                    "streaming_proxy": "Proxy Address"
                 }
             }
         },        
         "error": {
-            "invalid_token": "The provided API token is invalid. Please check and try again."
+            "invalid_proxy": "Enter a valid HTTP proxy address.",
+            "cannot_connect_proxy": "Failed to connect through the proxy. Verify the address and try again.",
+            "invalid_proxy_auth": "The proxy rejected the provided credentials.",
+            "proxy_timed_out": "The proxy connection timed out.",
+            "unknown": "An unexpected error occurred. Please try again later."
         }
     },
     "device": {

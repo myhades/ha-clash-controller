@@ -34,17 +34,22 @@
     "options": {
         "step": {
             "init": {
-                "description": "修改此条目的选项。检测流媒体服务可用性时，Home Assistant 必须通过同一代理进行连接。",
+                "description": "必须正确填写 HTTP 代理地址，格式为 `<address>:<port>`；如使用身份验证，则为 `<username>:<password>@<address>:<port>`。",
                 "title": "Clash 控制器选项",
                 "data": {
                     "scan_interval": "扫描间隔（秒）",
                     "concurrent_connections": "并发连接数",
-                    "streaming_detection": "流媒体可用性检测"
+                    "streaming_detection": "流媒体可用性检测",
+                    "streaming_proxy": "代理地址"
                 }
             }
         },        
         "error": {
-            "invalid_token": "提供的 API 令牌无效，请检查后重试。"
+            "invalid_proxy": "请输入有效的 HTTP 代理地址。",
+            "cannot_connect_proxy": "无法通过代理连接，请检查地址后重试。",
+            "invalid_proxy_auth": "代理拒绝了提供的身份验证信息。",
+            "proxy_timed_out": "代理连接超时。",
+            "unknown": "发生意外错误，请稍后重试。"
         }
     },
     "device": {

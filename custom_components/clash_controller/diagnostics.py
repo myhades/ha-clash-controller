@@ -7,9 +7,15 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from . import ClashControllerConfigEntry
-from .const import CONF_API_URL, CONF_BEAR_TOKEN
+from .const import CONF_API_URL, CONF_BEAR_TOKEN, CONF_STREAMING_PROXY
 
-TO_REDACT = {CONF_API_URL, CONF_BEAR_TOKEN, "title", "unique_id"}
+TO_REDACT = {
+    CONF_API_URL,
+    CONF_BEAR_TOKEN,
+    CONF_STREAMING_PROXY,
+    "title",
+    "unique_id",
+}
 
 
 async def async_get_config_entry_diagnostics(
@@ -18,9 +24,7 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator = config_entry.runtime_data.coordinator
-    entity_counts = Counter(
-        entity.entity_type for entity in (coordinator.data or [])
-    )
+    entity_counts = Counter(entity.entity_type for entity in (coordinator.data or []))
 
     return {
         "config_entry": async_redact_data(config_entry.as_dict(), TO_REDACT),
