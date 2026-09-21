@@ -29,7 +29,7 @@ Core support:
 | sing-box        | Partially | v1.14.0        | Maintained |
 ## Installation
 
-Home Assistant Core must be `2025.8.0` or newer.
+Home Assistant Core must be `2026.8.0` or newer.
 
 Choose your preferred installation method, and reboot Home Assistant afterward.
 
