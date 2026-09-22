@@ -114,7 +114,7 @@ class StreamingCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 ClashEntityData(
                     name=None,
                     state=details.get("state", "unknown"),
-                    icon=service_info.icon,
+                    icon="mdi:television",
                     attributes={
                         key: value for key, value in details.items() if key != "state"
                     },

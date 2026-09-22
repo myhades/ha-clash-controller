@@ -39,7 +39,6 @@ class StreamingService:
     """Static definition for a streaming service sensor."""
 
     name: str
-    icon: str
     url: str
     checker: str
     enabled_default: bool = False
@@ -48,26 +47,22 @@ class StreamingService:
 SERVICE_TABLE: dict[str, StreamingService] = {
     "netflix": StreamingService(
         name="Netflix",
-        icon="mdi:netflix",
         url="https://www.netflix.com/title/81280792",
         checker="_async_check_netflix",
         enabled_default=True,
     ),
     "youtube_premium": StreamingService(
         name="YouTube Premium",
-        icon="mdi:youtube",
         url="https://www.youtube.com/premium",
         checker="_async_check_youtube_premium",
     ),
     "prime_video": StreamingService(
         name="Prime Video",
-        icon="mdi:amazon",
         url="https://www.primevideo.com/",
         checker="_async_check_prime_video",
     ),
     "bbc_iplayer": StreamingService(
         name="BBC iPlayer",
-        icon="mdi:television-play",
         url=(
             "https://open.live.bbc.co.uk/mediaselector/6/select/version/2.0/"
             "mediaset/pc/vpid/bbc_one_london/format/json/jsfunc/JS_callbacks0"
@@ -76,25 +71,21 @@ SERVICE_TABLE: dict[str, StreamingService] = {
     ),
     "paramount_plus": StreamingService(
         name="Paramount+",
-        icon="mdi:mountain",
         url="https://www.paramountplus.com/",
         checker="_async_check_paramount_plus",
     ),
     "peacock": StreamingService(
         name="Peacock",
-        icon="mdi:television",
         url="https://www.peacocktv.com/",
         checker="_async_check_peacock",
     ),
     "max": StreamingService(
         name="Max",
-        icon="mdi:alpha-m-circle",
         url="https://www.max.com/",
         checker="_async_check_max",
     ),
     "dazn": StreamingService(
         name="DAZN",
-        icon="mdi:soccer",
         url="https://startup.core.indazn.com/misl/v5/Startup",
         checker="_async_check_dazn",
     ),

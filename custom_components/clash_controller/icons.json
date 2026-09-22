@@ -25,8 +25,8 @@
       "rule_provider_count": {
         "default": "mdi:file-document-outline"
       },
-      "netflix_service": {
-        "default": "mdi:netflix"
+      "streaming_service": {
+        "default": "mdi:television"
       }
     }
   }
