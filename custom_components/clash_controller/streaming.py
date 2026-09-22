@@ -175,6 +175,7 @@ class StreamingDetector:
     ) -> None:
         self._session = session
         self._proxy = proxy
+        self._checker_errors: dict[str, type[Exception]] = {}
 
     async def async_validate_proxy(self) -> None:
         """Verify that the proxy can reach the streaming test endpoint."""
@@ -416,10 +417,19 @@ class StreamingDetector:
         async def check_service(service: str) -> dict[str, Any]:
             try:
                 checker = getattr(self, SERVICE_TABLE[service].checker)
-                return await checker()
-            except Exception:
-                _LOGGER.exception("Unexpected error checking streaming service %s", service)
+                result = await checker()
+            except Exception as err:
+                if self._checker_errors.get(service) is not type(err):
+                    _LOGGER.exception("Unexpected error checking streaming service %s", service)
+                else:
+                    _LOGGER.debug(
+                        "Streaming checker %s still failing: %s", service, type(err).__name__
+                    )
+                self._checker_errors[service] = type(err)
                 return {"state": STATE_UNKNOWN, "reason": "checker_error"}
+            if self._checker_errors.pop(service, None) is not None:
+                _LOGGER.info("Streaming checker %s recovered", service)
+            return result
 
         results = await asyncio.gather(*(check_service(service) for service in selected))
         return dict(zip(selected, results))

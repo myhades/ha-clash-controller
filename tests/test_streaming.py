@@ -1,6 +1,7 @@
 """Streaming detector contracts."""
 
 import asyncio
+import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -220,6 +221,7 @@ async def test_service_checkers_use_normalized_states(
 
 
 async def test_checker_failure_is_isolated_and_cancellation_propagates(caplog):
+    caplog.set_level(logging.DEBUG, logger="custom_components.clash_controller.streaming")
     detector = StreamingDetector(
         MagicMock(spec=aiohttp.ClientSession),
         parse_streaming_proxy("proxy.local:7890"),
@@ -235,6 +237,21 @@ async def test_checker_failure_is_isolated_and_cancellation_propagates(caplog):
         "dazn": {"state": "unknown", "reason": "checker_error"},
     }
     assert "Unexpected error checking streaming service dazn" in caplog.text
+    await detector.async_fetch_data({"dazn"})
+    assert "Streaming checker dazn still failing: ValueError" in caplog.text
+    assert len([record for record in caplog.records if record.exc_info]) == 1
+    detector._async_check_dazn.side_effect = TypeError("different failure")
+    await detector.async_fetch_data({"dazn"})
+    assert len([record for record in caplog.records if record.exc_info]) == 2
+    detector._async_check_dazn.side_effect = None
+    detector._async_check_dazn.return_value = {"state": "unknown"}
+    await detector.async_fetch_data({"dazn"})
+    await detector.async_fetch_data({"dazn"})
+    assert sum(record.message == "Streaming checker dazn recovered" for record in caplog.records) == 1
+    detector._async_check_dazn.side_effect = ValueError("new outage")
+    await detector.async_fetch_data({"dazn"})
+    assert len([record for record in caplog.records if record.exc_info]) == 3
     detector._async_check_dazn.side_effect = asyncio.CancelledError
     with pytest.raises(asyncio.CancelledError):
         await detector.async_fetch_data({"dazn"})
+    assert len([record for record in caplog.records if record.exc_info]) == 3
