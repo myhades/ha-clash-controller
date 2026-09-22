@@ -145,6 +145,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             identifiers={(DOMAIN, self.device_id)},
             manufacturer=manufacturer,
             model=model,
+            model_id=DOMAIN,
             sw_version=version_info.version,
             translation_key="clash_instance",
         )
