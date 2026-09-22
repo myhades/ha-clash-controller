@@ -67,6 +67,8 @@ async def test_streaming_status_uses_proxy(status):
         status=status,
         url="https://streaming.example/title",
         text=AsyncMock(return_value="response body"),
+        headers={"Content-Type": "text/html"},
+        history=(SimpleNamespace(headers={"Set-Cookie": "countryCode=FR"}),),
     )
     session = MagicMock(spec=aiohttp.ClientSession)
     session.request.return_value = response
@@ -77,6 +79,8 @@ async def test_streaming_status_uses_proxy(status):
     )
 
     assert result.status_code == status
+    assert "countryCode=FR" in result.response_headers
+    assert "Content-Type: text/html" in result.response_headers
     assert result.latency >= 0
     assert result.error == ("proxy_authentication" if status == 407 else None)
     assert session.request.call_args.kwargs["proxy"] == proxy.url
@@ -179,7 +183,8 @@ async def test_runtime_proxy_failure_returns_unknown():
                 200,
                 0.1,
                 "https://www.max.com/",
-                'countryCode=FR "url":"/fr/fr"',
+                '"url":"/fr/fr"',
+                response_headers="Set-Cookie: countryCode=FR; Path=/",
             ),
             "available",
             {"region": "FR"},

@@ -125,6 +125,7 @@ class StreamingResponse:
     url: str
     body: str = ""
     error: str | None = None
+    response_headers: str = ""
 
 
 def parse_streaming_proxy(value: str) -> StreamingProxy:
@@ -222,6 +223,11 @@ class StreamingDetector:
                     url=str(response.url),
                     body=body,
                     error="proxy_authentication" if response.status == 407 else None,
+                    response_headers="\n".join(
+                        f"{name}: {value}"
+                        for hop in (*response.history, response)
+                        for name, value in hop.headers.items()
+                    ),
                 )
         except asyncio.TimeoutError:
             return StreamingResponse(
@@ -341,7 +347,10 @@ class StreamingDetector:
         response = await self._async_request(
             "GET", SERVICE_TABLE["max"].url, headers=_BROWSER_HEADERS
         )
-        region_match = re.search(r"countryCode=([A-Z]{2})", response.body)
+        region_match = re.search(
+            r"countryCode=([A-Z]{2})",
+            response.response_headers + "\n" + response.body,
+        )
         if region_match is None:
             return self._result(response, STATE_UNKNOWN)
         region = region_match.group(1)
