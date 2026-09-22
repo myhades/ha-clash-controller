@@ -194,6 +194,12 @@ async def test_runtime_proxy_failure_returns_unknown():
             "available",
             {"region": "DE"},
         ),
+        (
+            "_async_check_dazn",
+            StreamingResponse(200, 0.1, "https://startup.core.indazn.com/", "[]"),
+            "unknown",
+            {},
+        ),
     ],
 )
 async def test_service_checkers_use_normalized_states(
@@ -211,3 +217,24 @@ async def test_service_checkers_use_normalized_states(
     assert set(result) >= {"state", "status_code", "latency", *attributes}
     for key, value in attributes.items():
         assert result[key] == value
+
+
+async def test_checker_failure_is_isolated_and_cancellation_propagates(caplog):
+    detector = StreamingDetector(
+        MagicMock(spec=aiohttp.ClientSession),
+        parse_streaming_proxy("proxy.local:7890"),
+    )
+    netflix = {"state": "available", "status_code": 200, "latency": 0.1}
+    detector._async_check_netflix = AsyncMock(return_value=netflix)
+    detector._async_check_dazn = AsyncMock(side_effect=ValueError("unexpected payload"))
+
+    result = await detector.async_fetch_data({"netflix", "dazn"})
+
+    assert result == {
+        "netflix": netflix,
+        "dazn": {"state": "unknown", "reason": "checker_error"},
+    }
+    assert "Unexpected error checking streaming service dazn" in caplog.text
+    detector._async_check_dazn.side_effect = asyncio.CancelledError
+    with pytest.raises(asyncio.CancelledError):
+        await detector.async_fetch_data({"dazn"})

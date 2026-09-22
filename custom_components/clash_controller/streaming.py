@@ -7,7 +7,7 @@ import json
 import logging
 import re
 import time
-from collections.abc import Awaitable, Callable, Collection
+from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
@@ -393,6 +393,8 @@ class StreamingDetector:
             payload = json.loads(response.body)
         except (TypeError, ValueError):
             return self._result(response, STATE_UNKNOWN)
+        if not isinstance(payload, dict):
+            return self._result(response, STATE_UNKNOWN)
         region_data = payload.get("Region", payload)
         if not isinstance(region_data, dict):
             return self._result(response, STATE_UNKNOWN)
@@ -419,8 +421,14 @@ class StreamingDetector:
             for service in SERVICE_TABLE
             if services is None or service in services
         ]
-        checkers: list[Callable[[], Awaitable[dict[str, Any]]]] = [
-            getattr(self, SERVICE_TABLE[service].checker) for service in selected
-        ]
-        results = await asyncio.gather(*(checker() for checker in checkers))
+
+        async def check_service(service: str) -> dict[str, Any]:
+            try:
+                checker = getattr(self, SERVICE_TABLE[service].checker)
+                return await checker()
+            except Exception:
+                _LOGGER.exception("Unexpected error checking streaming service %s", service)
+                return {"state": STATE_UNKNOWN, "reason": "checker_error"}
+
+        results = await asyncio.gather(*(check_service(service) for service in selected))
         return dict(zip(selected, results))
