@@ -15,7 +15,6 @@ from clash_controller_api import (
     APIConnectionError,
     APITimeoutError,
     ClashAPI,
-    FetchResult,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL
@@ -152,18 +151,17 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
 
     async def _async_update_data(self):
         """Fetch data from API endpoint."""
-        response: dict[str, Any] = {}
         _LOGGER.debug("Start fetching data from Clash.")
 
         try:
             result = await self.api.async_fetch_data()
-            response = result.data if isinstance(result, FetchResult) else result
-            if isinstance(result, FetchResult) and any(
+            response = result.data
+            if any(
                 isinstance(error, APIAuthError) for error in result.errors.values()
             ):
                 raise ConfigEntryAuthFailed
             if not CORE_DATA_KEYS.intersection(response):
-                if isinstance(result, FetchResult) and result.errors:
+                if result.errors:
                     raise UpdateFailed(next(iter(result.errors.values())))
                 raise UpdateFailed("No data returned from Clash core.")
         except ConfigEntryAuthFailed:
