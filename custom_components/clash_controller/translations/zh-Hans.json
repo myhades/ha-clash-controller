@@ -34,7 +34,7 @@
     "options": {
         "step": {
             "init": {
-                "description": "必须正确填写 HTTP 代理地址，格式为 `<address>:<port>`；如使用身份验证，则为 `<username>:<password>@<address>:<port>`。",
+                "description": "必须正确填写 HTTP 代理地址，格式为 `'<address>:<port>'`；如使用身份验证，则为 `'<username>:<password>@<address>:<port>'`。",
                 "title": "Clash 控制器选项",
                 "data": {
                     "scan_interval": "扫描间隔（秒）",

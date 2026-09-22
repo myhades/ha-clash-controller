@@ -34,7 +34,7 @@
     "options": {
         "step": {
             "init": {
-                "description": "A valid HTTP proxy address is required in the format `<address>:<port>`, or `<username>:<password>@<address>:<port>` when authentication is used.",
+                "description": "A valid HTTP proxy address is required in the format `'<address>:<port>'`, or `'<username>:<password>@<address>:<port>'` when authentication is used.",
                 "title": "Clash Controller Options",
                 "data": {
                     "scan_interval": "Scan Interval (seconds)",
