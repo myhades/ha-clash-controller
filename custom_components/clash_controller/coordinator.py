@@ -208,8 +208,12 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         if capabilities.get("providers_proxies") or capabilities.get("providers_rules"):
             entity_data.extend(
                 self._build_provider_entities(
-                    response.get("providers_proxies", {}),
-                    response.get("providers_rules", {}),
+                    response.get("providers_proxies")
+                    if capabilities.get("providers_proxies")
+                    else None,
+                    response.get("providers_rules")
+                    if capabilities.get("providers_rules")
+                    else None,
                     provider_healthcheck_enabled=capabilities.get(
                         "provider_healthcheck", False
                     ),
@@ -418,8 +422,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
 
     def _build_provider_entities(
         self,
-        providers_proxies: dict[str, Any],
-        providers_rules: dict[str, Any],
+        providers_proxies: dict[str, Any] | None,
+        providers_rules: dict[str, Any] | None,
         provider_healthcheck_enabled: bool,
     ) -> list[ClashEntityData]:
         """Create entities for provider metrics and actions."""
@@ -432,41 +436,39 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             return timeout if timeout > 0 else DEFAULT_HEALTHCHECK_TIMEOUT_MS
 
         proxy_provider_map = (
-            providers_proxies.get("providers", {})
+            providers_proxies.get("providers")
             if isinstance(providers_proxies, dict)
-            else {}
+            else None
         )
         rule_provider_map = (
-            providers_rules.get("providers", {})
+            providers_rules.get("providers")
             if isinstance(providers_rules, dict)
-            else {}
+            else None
         )
 
         if not isinstance(proxy_provider_map, dict):
-            proxy_provider_map = {}
+            proxy_provider_map = None
         if not isinstance(rule_provider_map, dict):
-            rule_provider_map = {}
+            rule_provider_map = None
 
-        entity_data: list[ClashEntityData] = [
-            ClashEntityData(
-                name=None,
-                state=len(proxy_provider_map),
-                entity_type="provider_count_sensor",
-                translation_key="proxy_provider_count",
-                entity_category=EntityCategory.DIAGNOSTIC,
-                unique_key="proxy_provider_count",
-            ),
-            ClashEntityData(
-                name=None,
-                state=len(rule_provider_map),
-                entity_type="provider_count_sensor",
-                translation_key="rule_provider_count",
-                entity_category=EntityCategory.DIAGNOSTIC,
-                unique_key="rule_provider_count",
-            ),
-        ]
+        entity_data: list[ClashEntityData] = []
+        for provider_type, providers in (
+            ("proxy", proxy_provider_map),
+            ("rule", rule_provider_map),
+        ):
+            if providers is not None:
+                entity_data.append(
+                    ClashEntityData(
+                        name=None,
+                        state=len(providers),
+                        entity_type="provider_count_sensor",
+                        translation_key=f"{provider_type}_provider_count",
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        unique_key=f"{provider_type}_provider_count",
+                    )
+                )
 
-        if provider_healthcheck_enabled:
+        if provider_healthcheck_enabled and proxy_provider_map is not None:
             for provider_name, provider_detail in proxy_provider_map.items():
                 encoded = quote(provider_name, safe="")
                 slug = self._slugify(provider_name) or encoded.lower().replace("%", "_")

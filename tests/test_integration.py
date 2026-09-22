@@ -245,27 +245,41 @@ async def test_entry_migration_removes_runtime_probe_data(hass, backend):
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
-@pytest.mark.parametrize("scope", ["partial", "all"])
+@pytest.mark.parametrize("scope", ["partial", "providers", "all"])
 async def test_polling_outage_and_recovery(hass, backend, scope):
+    api = backend[0](HOST, "")
+    api.capabilities.update(providers_proxies=True, providers_rules=True)
+    api.payload.update(
+        providers_proxies={"providers": {"proxy": {}}},
+        providers_rules={"providers": {"rule": {}}},
+    )
     entry = await load_entry(hass, backend)
-    api = backend[1][HOST]
     upload = entity_id(hass, entry, "_upload_speed")
     group = entity_id(hass, entry, "_a/b_中文")
+    proxy_count = entity_id(hass, entry, "_proxy_provider_count")
+    rule_count = entity_id(hass, entry, "_rule_provider_count")
     original = deepcopy(api.payload)
+    missing_endpoint = "providers_proxies" if scope == "providers" else "proxies"
     api.payload = (
         {}
         if scope == "all"
-        else {key: value for key, value in original.items() if key != "proxies"}
+        else {key: value for key, value in original.items() if key != missing_endpoint}
     )
     await poll(hass)
     assert entry.state is ConfigEntryState.LOADED
-    assert hass.states.get(group).state == STATE_UNAVAILABLE
+    assert (hass.states.get(group).state == STATE_UNAVAILABLE) is (scope != "providers")
     assert (hass.states.get(upload).state == STATE_UNAVAILABLE) is (scope == "all")
+    assert hass.states.get(proxy_count).state == (
+        STATE_UNAVAILABLE if scope in {"providers", "all"} else "1"
+    )
+    assert hass.states.get(rule_count).state == (STATE_UNAVAILABLE if scope == "all" else "1")
     api.payload = original
     await poll(hass, 22)
     assert entry.state is ConfigEntryState.LOADED
     assert hass.states.get(group).state != STATE_UNAVAILABLE
     assert hass.states.get(upload).state != STATE_UNAVAILABLE
+    assert hass.states.get(proxy_count).state == "1"
+    assert hass.states.get(rule_count).state == "1"
 
 
 async def test_offline_start_retries_without_probing(hass, backend):

@@ -51,3 +51,17 @@ def test_provider_entities(healthcheck):
             ("providers/proxies/default/healthcheck", 5000),
             ("providers/proxies/HK%20Group/healthcheck", 3000),
         }
+
+    for absent in (None, {}, {"providers": []}):
+        entities = coordinator._build_provider_entities(
+            {"providers": {}}, absent, provider_healthcheck_enabled=healthcheck
+        )
+        assert [(item.unique_key, item.state) for item in entities] == [
+            ("proxy_provider_count", 0)
+        ]
+        entities = coordinator._build_provider_entities(
+            absent, {"providers": {}}, provider_healthcheck_enabled=healthcheck
+        )
+        assert [(item.unique_key, item.state) for item in entities] == [
+            ("rule_provider_count", 0)
+        ]
