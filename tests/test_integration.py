@@ -148,9 +148,10 @@ async def poll(hass, seconds=11):
         (APIConnectionError("offline"), "cannot_connect"),
         (APITimeoutError("timeout"), "timed_out"),
         (APIClientError("malformed"), "cannot_connect"),
+        (RuntimeError("unexpected failure"), "unknown"),
     ],
 )
-async def test_config_flow_errors(hass, backend, error, key):
+async def test_config_flow_errors(hass, backend, error, key, caplog):
     api = backend[0](HOST, "")
     api.async_validate_connection.side_effect = error
     result = await hass.config_entries.flow.async_init(
@@ -160,6 +161,13 @@ async def test_config_flow_errors(hass, backend, error, key):
     assert result["errors"] == {"base": key}
     assert not hass.config_entries.async_entries(DOMAIN)
     api.async_detect_capabilities.assert_not_awaited()
+    unexpected = [
+        record for record in caplog.records
+        if record.message == "Unexpected error validating controller connection"
+    ]
+    assert len(unexpected) == (1 if key == "unknown" else 0)
+    if unexpected:
+        assert unexpected[0].exc_info is not None
 
 
 async def test_flow_identity_reload_and_cleanup(hass, backend):

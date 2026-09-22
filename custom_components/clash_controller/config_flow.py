@@ -64,6 +64,7 @@ async def _test_connection(api: ClashAPI):
     except (APIClientError, APIConnectionError):
         errors["base"] = "cannot_connect"
     except Exception:
+        _LOGGER.exception("Unexpected error validating controller connection")
         errors["base"] = "unknown"
     return errors
 
