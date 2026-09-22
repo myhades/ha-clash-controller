@@ -1,7 +1,5 @@
 """Button platform for Clash Controller."""
 
-import logging
-
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
@@ -12,7 +10,6 @@ from .base import BaseEntity
 from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 
-_LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 0
 
 async def async_setup_entry(

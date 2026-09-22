@@ -1,6 +1,5 @@
 """Base entity for Clash Controller."""
 
-import logging
 from typing import Any
 
 from homeassistant.core import callback
@@ -8,9 +7,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 from .streaming_coordinator import StreamingCoordinator
-
-_LOGGER = logging.getLogger(__name__)
-
 
 type EntityCoordinator = ClashControllerCoordinator | StreamingCoordinator
 
@@ -46,13 +42,6 @@ class BaseEntity(CoordinatorEntity[EntityCoordinator]):
             )
         self._attr_entity_category = self.entity_data.entity_category
         self._attr_available = True
-
-        entity_label = (
-            self._entity_name
-            or self.entity_data.translation_key
-            or self.entity_data.entity_type
-        )
-        _LOGGER.debug("Entity %s (%s) initialized.", entity_label, self._attr_unique_id)
 
     @property
     def available(self) -> bool:

@@ -109,7 +109,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         )
         self._data_by_name: dict[str, ClashEntityData] = {}
         self._data_by_unique_id: dict[str, ClashEntityData] = {}
-        _LOGGER.debug(f"Clash API initialized for coordinator {self.name}")
 
     async def _async_setup(self) -> None:
         """Load data that remains stable for this coordinator instance."""
@@ -151,8 +150,6 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
 
     async def _async_update_data(self):
         """Fetch data from API endpoint."""
-        _LOGGER.debug("Start fetching data from Clash.")
-
         try:
             result = await self.api.async_fetch_data()
             response = result.data

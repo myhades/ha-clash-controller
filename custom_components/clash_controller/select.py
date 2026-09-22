@@ -1,6 +1,5 @@
 """Select platform for Clash Controller."""
 
-import logging
 from urllib.parse import quote
 
 from homeassistant.components.select import SelectEntity
@@ -13,7 +12,6 @@ from .base import BaseEntity
 from .const import DOMAIN
 from .coordinator import ClashControllerCoordinator, ClashEntityData
 
-_LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 0
 
 async def async_setup_entry(
