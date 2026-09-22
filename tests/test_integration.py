@@ -752,6 +752,8 @@ async def test_connections_and_multiple_entry_routing(hass, backend):
         ),
         ("reboot_core_service", {}, "unsupported_action"),
         ("get_rule_service", {"device_id": "missing"}, "invalid_device"),
+        ("get_rule_service", {"device_id": "foreign"}, "invalid_device"),
+        ("get_rule_service", {"device_id": "unloaded"}, "invalid_device"),
     ],
 )
 async def test_service_validation(hass, backend, service, data, key):
@@ -759,6 +761,20 @@ async def test_service_validation(hass, backend, service, data, key):
     api = backend[1][HOST]
     api.capabilities["restart"] = False
     device = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)[0]
+    data = dict(data)
+    if data.get("device_id") == "foreign":
+        foreign_entry = MockConfigEntry(domain="other", state=ConfigEntryState.LOADED)
+        foreign_entry.add_to_hass(hass)
+        foreign_entry.runtime_data = entry.runtime_data
+        foreign_device = dr.async_get(hass).async_get_or_create(
+            config_entry_id=foreign_entry.entry_id,
+            identifiers={("other", "device")},
+        )
+        data["device_id"] = foreign_device.id
+    elif data.get("device_id") == "unloaded":
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done()
+        data["device_id"] = device.id
     with pytest.raises(ServiceValidationError) as error:
         await hass.services.async_call(
             DOMAIN,

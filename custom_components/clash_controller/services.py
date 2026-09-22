@@ -5,6 +5,7 @@ import json
 from urllib.parse import quote
 
 import voluptuous as vol
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_DEVICE_ID
 from homeassistant.core import (
     HomeAssistant,
@@ -173,27 +174,21 @@ class ClashServicesSetup:
 
         dev_reg = dr.async_get(self.hass)
         device = dev_reg.async_get(device_id)
-        if not device:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="invalid_device",
-            )
-        config_entry_id = device.config_entry_id
-        if not config_entry_id:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="invalid_device",
-            )
-        config_entry = self.hass.config_entries.async_get_entry(config_entry_id)
-        runtime_data = (
-            getattr(config_entry, "runtime_data", None) if config_entry else None
+        config_entry = (
+            self.hass.config_entries.async_get_entry(device.config_entry_id)
+            if device is not None
+            else None
         )
-        if not runtime_data:
+        if (
+            config_entry is None
+            or config_entry.domain != DOMAIN
+            or config_entry.state is not ConfigEntryState.LOADED
+        ):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_device",
             )
-        return runtime_data.coordinator
+        return config_entry.runtime_data.coordinator
 
     @staticmethod
     def _require_capability(
