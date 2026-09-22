@@ -34,7 +34,7 @@
     "options": {
         "step": {
             "init": {
-                "description": "Für den Streaming-Check ist eine gültige HTTP-Proxy-Adresse erforderlich: `'<address>:<port>'` oder mit Zugangsdaten `'<username>:<password>@<address>:<port>'`.",
+                "description": "Für den Streaming-Check ist eine gültige HTTP-Proxy-Adresse erforderlich: `address:port` oder mit Zugangsdaten `username:password@address:port`.",
                 "title": "Clash Controller – Optionen",
                 "data": {
                     "scan_interval": "Abfrageintervall (Sekunden)",
