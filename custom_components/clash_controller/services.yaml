@@ -4,8 +4,9 @@ reboot_core_service:
       required: true
       selector:
         device:
-          integration: clash_controller
-          model_id: clash_controller
+          filter:
+            integration: clash_controller
+            model_id: clash_controller
 
 filter_connection_service:
   fields:
@@ -13,8 +14,9 @@ filter_connection_service:
       required: true
       selector:
         device:
-          integration: clash_controller
-          model_id: clash_controller
+          filter:
+            integration: clash_controller
+            model_id: clash_controller
     close_connection:
       default: false
       example: false
@@ -43,8 +45,9 @@ get_latency_service:
       required: true
       selector:
         device:
-          integration: clash_controller
-          model_id: clash_controller
+          filter:
+            integration: clash_controller
+            model_id: clash_controller
     group:
       example: "Proxy"
       required: false
@@ -78,8 +81,9 @@ dns_query_service:
       required: true
       selector:
         device:
-          integration: clash_controller
-          model_id: clash_controller
+          filter:
+            integration: clash_controller
+            model_id: clash_controller
     domain_name:
       example: "google.com"
       required: true
@@ -98,8 +102,9 @@ get_rule_service:
       required: true
       selector:
         device:
-          integration: clash_controller
-          model_id: clash_controller
+          filter:
+            integration: clash_controller
+            model_id: clash_controller
     rule_type:
       example: "DomainSuffix"
       required: false
@@ -122,8 +127,9 @@ api_call_service:
       required: true
       selector:
         device:
-          integration: clash_controller
-          model_id: clash_controller
+          filter:
+            integration: clash_controller
+            model_id: clash_controller
     api_endpoint:
       example: "proxies/proxies_name"
       required: true
