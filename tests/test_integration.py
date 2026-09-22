@@ -282,6 +282,57 @@ async def test_offline_start_retries_without_probing(hass, backend):
     assert entry.state is ConfigEntryState.LOADED
 
 
+async def test_entities_added_after_first_refresh(hass, backend):
+    api = backend[0](HOST, "")
+    api.capabilities.update(providers_proxies=True, provider_healthcheck=True)
+    api.payload.pop("memory")
+    api.payload.pop("proxies")
+    api.payload["providers_proxies"] = {"providers": {}}
+    entry = await load_entry(hass, backend)
+    registry = er.async_get(hass)
+
+    def registered():
+        return {
+            item.unique_id: item.entity_id
+            for item in er.async_entries_for_config_entry(registry, entry.entry_id)
+        }
+
+    before = registered()
+    restored = deepcopy(PAYLOAD)
+    restored["proxies"]["proxies"]["Auto"] = {
+        "name": "Auto", "type": "URLTest", "now": "DIRECT", "all": ["DIRECT"]
+    }
+    restored["providers_proxies"] = {"providers": {"New provider": {}}}
+    api.payload = restored
+    await poll(hass)
+    after = registered()
+    assert before.items() <= after.items()
+    assert len(after) == len(before) + 4
+    memory = entity_id(hass, entry, "_memory_used")
+    group = entity_id(hass, entry, "_a/b_中文")
+    automatic = entity_id(hass, entry, "_auto")
+    button = entity_id(hass, entry, "_provider_healthcheck_new_provider")
+    assert hass.states.get(memory).state != STATE_UNAVAILABLE
+    assert hass.states.get(group).state == "DIRECT"
+    assert hass.states.get(automatic).state == "DIRECT"
+    assert registry.async_get(button).disabled_by is er.RegistryEntryDisabler.INTEGRATION
+
+    api.payload = {"traffic": PAYLOAD["traffic"]}
+    await poll(hass, 22)
+    assert hass.states.get(memory).state == STATE_UNAVAILABLE
+    assert hass.states.get(group).state == STATE_UNAVAILABLE
+    api.payload = restored
+    await poll(hass, 33)
+    assert registered() == after
+    assert hass.states.get(memory).state != STATE_UNAVAILABLE
+    assert hass.states.get(group).state == "DIRECT"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    api.async_fetch_data.reset_mock()
+    await poll(hass, 120)
+    api.async_fetch_data.assert_not_awaited()
+
+
 async def test_stored_auth_failure_starts_reauthentication(hass, backend):
     api = backend[0](HOST, "")
     api.async_validate_connection.side_effect = APIAuthError("invalid")

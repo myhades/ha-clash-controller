@@ -7,7 +7,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import UnitOfDataRate, UnitOfInformation
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import ClashControllerConfigEntry
@@ -89,20 +89,32 @@ async def async_setup_entry(
     coordinator: ClashControllerCoordinator = config_entry.runtime_data.coordinator
     streaming_coordinator = config_entry.runtime_data.streaming_coordinator
 
-    sensors: list[SensorEntity] = []
-    for entity_data in coordinator.data:
-        if description := SENSOR_DESCRIPTIONS.get(entity_data.unique_key or ""):
-            sensors.append(ClashNumericSensor(coordinator, entity_data, description))
-        elif entity_data.entity_type == "proxy_group_sensor":
-            sensors.append(GroupSensor(coordinator, entity_data))
+    known_ids: set[str] = set()
+
+    @callback
+    def async_add_new_sensors() -> None:
+        sensors: list[SensorEntity] = []
+        for entity_data in coordinator.data:
+            if entity_data.unique_id in known_ids:
+                continue
+            if description := SENSOR_DESCRIPTIONS.get(entity_data.unique_key or ""):
+                sensors.append(ClashNumericSensor(coordinator, entity_data, description))
+            elif entity_data.entity_type == "proxy_group_sensor":
+                sensors.append(GroupSensor(coordinator, entity_data))
+            else:
+                continue
+            known_ids.add(entity_data.unique_id)
+        if sensors:
+            async_add_entities(sensors)
+
+    async_add_new_sensors()
+    config_entry.async_on_unload(coordinator.async_add_listener(async_add_new_sensors))
 
     if streaming_coordinator is not None:
-        sensors.extend(
+        async_add_entities(
             StreamingSensor(streaming_coordinator, entity_data)
             for entity_data in streaming_coordinator.data
         )
-
-    async_add_entities(sensors)
 
 
 class SensorEntityBase(BaseEntity, SensorEntity):

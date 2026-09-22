@@ -3,7 +3,7 @@
 import logging
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -30,13 +30,22 @@ async def async_setup_entry(
         "provider_healthcheck_button": ButtonEntityBase,
     }
 
-    buttons = [
-        button_types[entity_type](coordinator, entity_data)
-        for entity_data in coordinator.data
-        if (entity_type := entity_data.entity_type) in button_types
-    ]
+    known_ids: set[str] = set()
 
-    async_add_entities(buttons)
+    @callback
+    def async_add_new_buttons() -> None:
+        buttons = []
+        for entity_data in coordinator.data:
+            if entity_data.unique_id in known_ids:
+                continue
+            if entity_type := button_types.get(entity_data.entity_type):
+                buttons.append(entity_type(coordinator, entity_data))
+                known_ids.add(entity_data.unique_id)
+        if buttons:
+            async_add_entities(buttons)
+
+    async_add_new_buttons()
+    config_entry.async_on_unload(coordinator.async_add_listener(async_add_new_buttons))
 
 class ButtonEntityBase(BaseEntity, ButtonEntity):
     """Base button entity class."""

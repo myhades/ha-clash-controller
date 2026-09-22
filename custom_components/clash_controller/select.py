@@ -4,7 +4,7 @@ import logging
 from urllib.parse import quote
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -30,13 +30,22 @@ async def async_setup_entry(
         "core_mode_selector": CoreModeSelect,
     }
 
-    selects = [
-        select_types[entity_type](coordinator, entity_data)
-        for entity_data in coordinator.data
-        if (entity_type := entity_data.entity_type) in select_types
-    ]
+    known_ids: set[str] = set()
 
-    async_add_entities(selects)
+    @callback
+    def async_add_new_selects() -> None:
+        selects = []
+        for entity_data in coordinator.data:
+            if entity_data.unique_id in known_ids:
+                continue
+            if entity_type := select_types.get(entity_data.entity_type):
+                selects.append(entity_type(coordinator, entity_data))
+                known_ids.add(entity_data.unique_id)
+        if selects:
+            async_add_entities(selects)
+
+    async_add_new_selects()
+    config_entry.async_on_unload(coordinator.async_add_listener(async_add_new_selects))
 
 class SelectEntityBase(BaseEntity, SelectEntity):
     """Base select entity class."""
