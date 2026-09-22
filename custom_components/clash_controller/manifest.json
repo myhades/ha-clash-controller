@@ -7,8 +7,8 @@
     "documentation": "https://github.com/myhades/ha-clash-controller",
     "integration_type": "device",
     "iot_class": "local_polling",
-    "loggers": ["clash_controller_api"],
     "issue_tracker": "https://github.com/myhades/ha-clash-controller/issues",
+    "loggers": ["clash_controller_api"],
     "requirements": [
         "clash-controller-api==0.1.2"
     ],
