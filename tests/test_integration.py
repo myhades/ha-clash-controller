@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from copy import deepcopy
 from datetime import timedelta
 from types import SimpleNamespace
@@ -255,7 +256,8 @@ async def test_entry_migration_removes_runtime_probe_data(hass, backend):
 
 
 @pytest.mark.parametrize("scope", ["partial", "providers", "all"])
-async def test_polling_outage_and_recovery(hass, backend, scope):
+async def test_polling_outage_and_recovery(hass, backend, scope, caplog):
+    caplog.set_level(logging.INFO, logger="custom_components.clash_controller.coordinator")
     api = backend[0](HOST, "")
     api.capabilities.update(providers_proxies=True, providers_rules=True)
     api.payload.update(
@@ -268,6 +270,14 @@ async def test_polling_outage_and_recovery(hass, backend, scope):
     proxy_count = entity_id(hass, entry, "_proxy_provider_count")
     rule_count = entity_id(hass, entry, "_rule_provider_count")
     original = deepcopy(api.payload)
+
+    async def fetch():
+        return FetchResult(
+            deepcopy(api.payload),
+            {key: APIConnectionError("offline") for key in original if key not in api.payload},
+        )
+
+    api.async_fetch_data.side_effect = fetch
     missing_endpoint = "providers_proxies" if scope == "providers" else "proxies"
     api.payload = (
         {}
@@ -282,13 +292,23 @@ async def test_polling_outage_and_recovery(hass, backend, scope):
         STATE_UNAVAILABLE if scope in {"providers", "all"} else "1"
     )
     assert hass.states.get(rule_count).state == (STATE_UNAVAILABLE if scope == "all" else "1")
-    api.payload = original
     await poll(hass, 22)
+    endpoint_logs = [record.message for record in caplog.records if record.message.startswith("Endpoint ")]
+    assert len(endpoint_logs) == (0 if scope == "all" else 1)
+    if endpoint_logs:
+        assert f"Endpoint {missing_endpoint} unavailable" in endpoint_logs[0]
+        assert "APIConnectionError" in endpoint_logs[0]
+    api.payload = original
+    await poll(hass, 33)
     assert entry.state is ConfigEntryState.LOADED
     assert hass.states.get(group).state != STATE_UNAVAILABLE
     assert hass.states.get(upload).state != STATE_UNAVAILABLE
     assert hass.states.get(proxy_count).state == "1"
     assert hass.states.get(rule_count).state == "1"
+    endpoint_logs = [record.message for record in caplog.records if record.message.startswith("Endpoint ")]
+    assert len(endpoint_logs) == (0 if scope == "all" else 2)
+    if endpoint_logs:
+        assert f"Endpoint {missing_endpoint} recovered" in endpoint_logs[-1]
 
 
 async def test_offline_start_retries_without_probing(hass, backend):

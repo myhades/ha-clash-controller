@@ -109,6 +109,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         )
         self._data_by_name: dict[str, ClashEntityData] = {}
         self._data_by_unique_id: dict[str, ClashEntityData] = {}
+        self._failed_endpoints: set[str] = set()
 
     async def _async_setup(self) -> None:
         """Load data that remains stable for this coordinator instance."""
@@ -174,6 +175,23 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         ]
         if not real_entities:
             raise UpdateFailed("Empty response")
+
+        failed_endpoints = set(result.errors)
+        for endpoint in sorted(failed_endpoints - self._failed_endpoints):
+            _LOGGER.info(
+                "Endpoint %s unavailable for entry %s: %s",
+                endpoint,
+                self.config_entry.entry_id,
+                type(result.errors[endpoint]).__name__,
+            )
+        if self.last_update_success:
+            for endpoint in sorted(self._failed_endpoints.intersection(response)):
+                _LOGGER.info(
+                    "Endpoint %s recovered for entry %s",
+                    endpoint,
+                    self.config_entry.entry_id,
+                )
+        self._failed_endpoints = failed_endpoints
 
         return data
 
