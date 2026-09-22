@@ -1,5 +1,6 @@
 """HA lifecycle and user-facing behavior, independent of the core implementation."""
 
+import asyncio
 import json
 from copy import deepcopy
 from datetime import timedelta
@@ -414,6 +415,53 @@ async def test_numeric_entities_and_missing_values(hass, backend):
         api.payload["traffic"]["up"] = value
         await poll(hass, 11 * offset)
         assert (hass.states.get(upload).state == STATE_UNAVAILABLE) is (value != 0)
+
+
+@pytest.mark.parametrize("finish_check", [True, False])
+async def test_streaming_first_refresh_does_not_block_setup(hass, backend, finish_check):
+    started = asyncio.Event()
+    release = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    async def fetch(services):
+        assert services == {"netflix"}
+        started.set()
+        try:
+            await release.wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+        return {"netflix": {"state": "available"}}
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=dict(INPUT),
+        options={"streaming_detection": True, "streaming_proxy": "proxy.local:7890"},
+    )
+    entry.add_to_hass(hass)
+    with patch(
+        "custom_components.clash_controller.streaming_coordinator."
+        "StreamingDetector.async_fetch_data",
+        side_effect=fetch,
+    ):
+        assert await asyncio.wait_for(hass.config_entries.async_setup(entry.entry_id), 2)
+        await asyncio.wait_for(hass.async_block_till_done(), 2)
+        await asyncio.wait_for(started.wait(), 1)
+        assert entry.state is ConfigEntryState.LOADED
+        netflix = entity_id(hass, entry, "_streaming_detection_netflix")
+        assert hass.states.get(netflix).state == "unknown"
+        assert (
+            hass.states.get(entity_id(hass, entry, "_upload_speed")).state
+            != STATE_UNAVAILABLE
+        )
+        if finish_check:
+            release.set()
+            await hass.async_block_till_done(wait_background_tasks=True)
+            assert hass.states.get(netflix).state == "available"
+            assert not cancelled.is_set()
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+        assert cancelled.is_set() is (not finish_check)
 
 
 async def test_options_and_streaming_isolation(hass, backend):

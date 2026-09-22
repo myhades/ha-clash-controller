@@ -72,6 +72,7 @@ class StreamingCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             )
         else:
             self.detector = StreamingDetector(async_get_clientsession(hass), proxy)
+        self.async_set_updated_data(self._build_entities({}))
 
     def _entity_unique_id(self, service: str) -> str:
         """Return the stable entity unique ID for a streaming service."""
@@ -101,9 +102,7 @@ class StreamingCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             if self.detector is not None
             else {}
         )
-        entities = self._build_entities(streaming)
-        self._data_by_unique_id = {item.unique_id: item for item in entities}
-        return entities
+        return self._build_entities(streaming)
 
     def _build_entities(self, streaming: dict[str, Any]) -> list[ClashEntityData]:
         """Create streaming sensor data from normalized checker results."""
@@ -128,6 +127,7 @@ class StreamingCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                     device_info=self.device,
                 )
             )
+        self._data_by_unique_id = {item.unique_id: item for item in entities}
         return entities
 
     def get_data_by_unique_id(self, unique_id: str) -> ClashEntityData | None:

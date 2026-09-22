@@ -58,10 +58,16 @@ async def async_setup_entry(
             coordinator.device_id,
             coordinator.device_registry_id,
         )
-        await streaming_coordinator.async_config_entry_first_refresh()
 
     config_entry.runtime_data = RuntimeData(coordinator, streaming_coordinator)
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
+    if streaming_coordinator is not None:
+        config_entry.async_create_background_task(
+            hass,
+            streaming_coordinator.async_refresh(),
+            "clash_controller streaming initial refresh",
+            eager_start=False,
+        )
     return True
 
 
