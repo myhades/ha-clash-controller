@@ -2,22 +2,24 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.device_registry import DeviceEntry
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .const import (
+    CONF_STREAMING_DETECTION,
+    DEFAULT_STREAMING_DETECTION,
+    DOMAIN,
+)
 from .coordinator import ClashControllerCoordinator
 from .services import ClashServicesSetup
+from .streaming_coordinator import StreamingCoordinator
 
-_LOGGER = logging.getLogger(__name__)
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
     Platform.SENSOR,
@@ -25,86 +27,76 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
 ]
 
-@dataclass
+
+@dataclass(slots=True)
 class RuntimeData:
     """Class to hold integration data."""
 
-    coordinator: DataUpdateCoordinator
-    cancel_update_listener: Callable
-    setup_done: bool = False
+    coordinator: ClashControllerCoordinator
+    streaming_coordinator: StreamingCoordinator | None
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Set up Clash Controller from a config entry."""
+type ClashControllerConfigEntry = ConfigEntry[RuntimeData]
 
-    hass.data.setdefault(DOMAIN, {})
-    runtime_data: RuntimeData | None = hass.data[DOMAIN].get(config_entry.entry_id)
-    setup_done = runtime_data.setup_done if runtime_data else False
-    coordinator = ClashControllerCoordinator(hass, config_entry)
 
-    try:
-        await coordinator.async_config_entry_first_refresh()
-    except ConfigEntryNotReady as err:
-        if not setup_done:
-            await coordinator.api.close_session()
-            raise err
-        _LOGGER.warning(err)
-        coordinator.data = coordinator.data or []
-
-    if coordinator.last_update_success:
-        capabilities = coordinator.api.capabilities or {}
-        available_endpoints = coordinator.api.available_endpoints or []
-        normalized_endpoints = [list(item) for item in available_endpoints]
-        if (
-            config_entry.data.get("capabilities") != capabilities
-            or config_entry.data.get("available_endpoints") != normalized_endpoints
-        ):
-            hass.config_entries.async_update_entry(
-                config_entry,
-                data={
-                    **config_entry.data,
-                    "available_endpoints": normalized_endpoints,
-                    "capabilities": capabilities,
-                },
-            )
-
-    cancel_update_listener = config_entry.add_update_listener(_async_update_listener)
-    hass.data[DOMAIN][config_entry.entry_id] = RuntimeData(
-        coordinator, cancel_update_listener, True
-    )
-    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up integration-wide service actions."""
     ClashServicesSetup(hass)
     return True
 
 
-async def _async_update_listener(hass: HomeAssistant, config_entry):
-    """Handle config options update."""
+async def async_setup_entry(
+    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
+) -> bool:
+    """Set up Clash Controller from a config entry."""
 
-    await hass.config_entries.async_reload(config_entry.entry_id)
+    coordinator = ClashControllerCoordinator(hass, config_entry)
+    await coordinator.async_config_entry_first_refresh()
 
+    streaming_coordinator: StreamingCoordinator | None = None
+    if config_entry.options.get(CONF_STREAMING_DETECTION, DEFAULT_STREAMING_DETECTION):
+        assert coordinator.device_registry_id is not None
+        streaming_coordinator = StreamingCoordinator(
+            hass,
+            config_entry,
+            coordinator.device_id,
+            coordinator.device_registry_id,
+        )
 
-async def async_remove_config_entry_device(
-    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: DeviceEntry) -> bool:
-    """Handle entry removal."""
-
+    config_entry.runtime_data = RuntimeData(coordinator, streaming_coordinator)
+    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
+    if streaming_coordinator is not None:
+        config_entry.async_create_background_task(
+            hass,
+            streaming_coordinator.async_refresh(),
+            "clash_controller streaming initial refresh",
+            eager_start=False,
+        )
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_migrate_entry(
+    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
+) -> bool:
+    """Remove obsolete runtime state from persisted entry data."""
+    if config_entry.version == 1 and config_entry.minor_version < 2:
+        data = dict(config_entry.data)
+        data.pop("available_endpoints", None)
+        data.pop("capabilities", None)
+        hass.config_entries.async_update_entry(
+            config_entry,
+            data=data,
+            minor_version=2,
+        )
+    return True
+
+
+async def async_unload_entry(
+    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
+) -> bool:
     """Unload a config entry."""
 
-    runtime_data = hass.data[DOMAIN][config_entry.entry_id]
-    runtime_data.cancel_update_listener()
-    coordinator = runtime_data.coordinator
-    if coordinator:
-        await coordinator.api.close_session()
     unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS
     )
-    if unload_ok:
-        hass.data[DOMAIN].pop(config_entry.entry_id)
-        if not hass.data[DOMAIN]:
-            for service in list(hass.services.async_services_for_domain(DOMAIN)):
-                hass.services.async_remove(DOMAIN, service)
-            hass.data.pop(DOMAIN)
     return unload_ok

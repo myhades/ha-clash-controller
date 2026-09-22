@@ -54,5 +54,39 @@
         "sha256": "70d01cfb8cb7bf7a92fd1af16cb4b9553d90bb4eecde3b5c4849103e27c80ddb"
       }
     }
+  },
+  "clash_rs": {
+    "version": "v0.10.8",
+    "source": "ibigbug/clash-rs official release",
+    "platforms": {
+      "darwin-arm64": {
+        "url": "https://github.com/ibigbug/clash-rs/releases/download/v0.10.8/clash-rs-aarch64-apple-darwin",
+        "sha256": "b417c171252fe1edfcc2b0d20436d4c0ad4b12e7aa65c6aaa103f5a041e7b020",
+        "format": "raw"
+      },
+      "linux-amd64": {
+        "url": "https://github.com/ibigbug/clash-rs/releases/download/v0.10.8/clash-rs-x86_64-unknown-linux-gnu",
+        "sha256": "d8a3be45594d7a50ec899119751d3d27a65ca30177eddf3e172ccc23e6e096da",
+        "format": "raw"
+      }
+    }
+  },
+  "sing_box": {
+    "version": "v1.14.0",
+    "source": "SagerNet/sing-box official release",
+    "platforms": {
+      "darwin-arm64": {
+        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box-1.14.0-darwin-arm64.tar.gz",
+        "sha256": "a150c94012ff768b7261939cd236b9c8554127f45137230295d23a5660225cc9",
+        "format": "tar.gz",
+        "member": "sing-box-1.14.0-darwin-arm64/sing-box"
+      },
+      "linux-amd64": {
+        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box-1.14.0-linux-amd64.tar.gz",
+        "sha256": "2375de6999f4f56ab46b4fc5ddf26a6aba1d3e61a0f4e7ddec2f4690457d5f63",
+        "format": "tar.gz",
+        "member": "sing-box-1.14.0-linux-amd64/sing-box"
+      }
+    }
   }
 }

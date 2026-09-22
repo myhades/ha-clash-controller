@@ -20,6 +20,7 @@ CONF_CONCURRENT_CONNECTIONS = "concurrent_connections"
 
 CONF_STREAMING_DETECTION = "streaming_detection"
 DEFAULT_STREAMING_DETECTION = False
+CONF_STREAMING_PROXY = "streaming_proxy"
 
 # Service names
 

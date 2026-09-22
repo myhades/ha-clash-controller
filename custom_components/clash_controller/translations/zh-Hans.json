@@ -11,6 +11,13 @@
                     "allow_unsafe": "允许不安全的 SSL 证书"
                 },
                 "description": "请输入您的 Clash 实例的 API 地址和令牌。例如：192.168.1.1:9090，clash.mydomain.com。如果地址是 IP，请确保其为静态地址。"
+            },
+            "reauth_confirm": {
+                "title": "更新 Clash 凭据",
+                "description": "已保存的 API 令牌不再有效。请输入有效令牌以重新连接。",
+                "data": {
+                    "bearer_token": "令牌"
+                }
             }
         },        
         "error": {
@@ -20,29 +27,37 @@
             "timed_out": "API 连接超时， Clash 是否在运行？"
         },
         "abort": {
-            "already_configured": "此位置的实例已添加，请使用配置按钮更新令牌并修改设置。"
+            "already_configured": "此位置的实例已添加。",
+            "reauth_successful": "身份验证已成功更新。"
         }
     },
     "options": {
         "step": {
             "init": {
-                "description": "修改此条目的选项。检测流媒体服务可用性时，Home Assistant 必须通过同一代理进行连接。",
+                "description": "如果使用流媒体检测，必须正确填写 HTTP 代理地址，格式为 `address:port`，如使用身份验证，则为 `username:password@address:port`。",
                 "title": "Clash 控制器选项",
                 "data": {
                     "scan_interval": "扫描间隔（秒）",
                     "concurrent_connections": "并发连接数",
-                    "bearer_token": "更新令牌（留空则跳过）",
-                    "streaming_detection": "流媒体可用性检测"
+                    "streaming_detection": "流媒体可用性检测",
+                    "streaming_proxy": "代理地址"
                 }
             }
         },        
         "error": {
-            "invalid_token": "提供的 API 令牌无效，请检查后重试。"
+            "invalid_proxy": "请输入有效的 HTTP 代理地址。",
+            "cannot_connect_proxy": "无法通过代理连接，请检查地址后重试。",
+            "invalid_proxy_auth": "代理拒绝了提供的身份验证信息。",
+            "proxy_timed_out": "代理连接超时。",
+            "unknown": "发生意外错误，请稍后重试。"
         }
     },
     "device": {
         "clash_instance": {
             "name": "Clash 实例"
+        },
+        "streaming_detection": {
+            "name": "流媒体可用性"
         }
     },
     "entity": {
@@ -96,12 +111,13 @@
           "rule_provider_count": {
             "name": "规则集合数量"
           },
-          "netflix_service": {
-            "name": "Netflix",
+          "streaming_service": {
+            "name": "{service}",
             "state":{
-                "unlocked": "已解锁",
-                "blocked": "未解锁",
-                "original_only": "仅限原创"
+                "available": "可用",
+                "limited": "受限",
+                "blocked": "受阻",
+                "unknown": "未知"
             },
             "state_attributes":{
                 "latency": {
@@ -109,9 +125,71 @@
                 },
                 "status_code": {
                     "name": "状态码"
+                },
+                "region": {
+                    "name": "地区"
+                },
+                "access_level": {
+                    "name": "访问级别"
+                },
+                "reason": {
+                    "name": "原因"
+                },
+                "redirect_url": {
+                    "name": "重定向地址"
                 }
             }
           }
+        }
+    },
+    "exceptions": {
+        "invalid_device": {
+            "message": "所选 Clash 实例无效或尚未加载。"
+        },
+        "unsupported_action": {
+            "message": "所选内核不支持{action}。"
+        },
+        "invalid_latency_target": {
+            "message": "策略组和节点必须且只能提供一个。"
+        },
+        "invalid_json": {
+            "message": "字段 {field} 必须包含 JSON 对象。"
+        },
+        "reboot_failed": {
+            "message": "重启内核时出错：{error}"
+        },
+        "connections_failed": {
+            "message": "获取连接时出错：{error}"
+        },
+        "close_connections_failed": {
+            "message": "关闭连接时出错：{error}"
+        },
+        "latency_failed": {
+            "message": "获取延迟时出错：{error}"
+        },
+        "dns_query_failed": {
+            "message": "执行 DNS 查询时出错：{error}"
+        },
+        "rules_failed": {
+            "message": "获取规则时出错：{error}"
+        },
+        "api_call_failed": {
+            "message": "执行 API 调用时出错：{error}"
+        },
+        "proxy_group_selection_failed": {
+            "message": "无法将策略组 {group} 切换到 {node}：{error}"
+        },
+        "empty_mode": {
+            "message": "代理模式不能为空。"
+        },
+        "mode_selection_failed": {
+            "message": "无法将代理模式切换到 {mode}：{error}"
+        },
+        "button_action_missing": {
+            "message": "此按钮未定义操作。"
+        },
+        "button_action_failed": {
+            "message": "执行 {action} 失败：{error}"
         }
     },
     "services": {

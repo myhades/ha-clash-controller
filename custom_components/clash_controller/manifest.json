@@ -8,6 +8,9 @@
     "integration_type": "device",
     "iot_class": "local_polling",
     "issue_tracker": "https://github.com/myhades/ha-clash-controller/issues",
-    "requirements": ["aiohttp>=3.8.1"],
-    "version": "0.2.1"
+    "loggers": ["clash_controller_api"],
+    "requirements": [
+        "clash-controller-api==0.1.2"
+    ],
+    "version": "0.3.0"
 }

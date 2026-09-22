@@ -1,4 +1,5 @@
 pytest==9.0.3
 pytest-asyncio==1.4.0
-pytest-homeassistant-custom-component==0.13.357
+pytest-homeassistant-custom-component==0.13.365
 PyYAML==6.0.3
+clash-controller-api==0.1.2
