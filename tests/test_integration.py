@@ -721,17 +721,16 @@ async def test_select_and_button_writes(hass, backend):
     )
     assert hass.states.get(selector).state == "REJECT"
     api.async_request.reset_mock()
-    # Mode writes have a deliberately supported PATCH -> PUT fallback.
-    api.async_request.side_effect = [APIClientError("method"), {}]
     await hass.services.async_call(
         "select",
         "select_option",
         {"entity_id": entity_id(hass, entry, "_core_mode"), "option": "global"},
         blocking=True,
     )
-    api.async_request.assert_any_await("PATCH", "configs", json_data={"mode": "global"})
-    api.async_request.assert_any_await("PUT", "configs", json_data={"mode": "global"})
-    api.async_request.side_effect = None
+    api.async_request.assert_awaited_once_with(
+        "PATCH", "configs", json_data={"mode": "global"}
+    )
+    assert hass.states.get(entity_id(hass, entry, "_core_mode")).state == "global"
     api.async_request.reset_mock()
     await hass.services.async_call(
         "button",
@@ -742,10 +741,14 @@ async def test_select_and_button_writes(hass, backend):
     api.async_request.assert_awaited_once_with("POST", "cache/fakeip/flush")
 
 
-async def test_entity_action_errors_are_translated(hass, backend):
+@pytest.mark.parametrize(
+    "api_error",
+    [APIConnectionError, APIAuthError, APITimeoutError, APIClientError],
+)
+async def test_entity_action_errors_are_translated(hass, backend, api_error):
     entry = await load_entry(hass, backend)
     api = backend[1][HOST]
-    api.async_request.side_effect = APIConnectionError("offline")
+    api.async_request.side_effect = api_error("request failed")
 
     with pytest.raises(HomeAssistantError) as error:
         await hass.services.async_call(
@@ -764,3 +767,18 @@ async def test_entity_action_errors_are_translated(hass, backend):
             blocking=True,
         )
     assert error.value.translation_key == "button_action_failed"
+
+    api.async_request.reset_mock()
+    mode = entity_id(hass, entry, "_core_mode")
+    with pytest.raises(HomeAssistantError) as error:
+        await hass.services.async_call(
+            "select",
+            "select_option",
+            {"entity_id": mode, "option": "global"},
+            blocking=True,
+        )
+    assert error.value.translation_key == "mode_selection_failed"
+    api.async_request.assert_awaited_once_with(
+        "PATCH", "configs", json_data={"mode": "global"}
+    )
+    assert hass.states.get(mode).state == "rule"

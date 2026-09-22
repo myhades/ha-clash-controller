@@ -40,6 +40,27 @@ async def test_core_loads_in_home_assistant(hass, running_core):
             hass.states.get(item.entity_id).state != STATE_UNAVAILABLE
             for item in enabled
         )
+        mode_entity = next(
+            (item for item in enabled if item.unique_id.endswith("_core_mode")), None
+        )
+        if mode_entity is not None:
+            mode_state = hass.states.get(mode_entity.entity_id)
+            mode = next(
+                option
+                for option in mode_state.attributes["options"]
+                if option != mode_state.state
+            )
+            await hass.services.async_call(
+                "select",
+                "select_option",
+                {"entity_id": mode_entity.entity_id, "option": mode},
+                blocking=True,
+            )
+            configs = await entry.runtime_data.coordinator.api.async_request(
+                "GET", "configs"
+            )
+            assert configs["mode"] == mode
+            assert hass.states.get(mode_entity.entity_id).state == mode
     finally:
         assert await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()

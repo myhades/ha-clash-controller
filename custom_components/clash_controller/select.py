@@ -109,18 +109,11 @@ class CoreModeSelect(SelectEntityBase):
                 "configs",
                 json_data={"mode": mode},
             )
-        except Exception:
-            try:
-                await self.coordinator.api.async_request(
-                    "PUT",
-                    "configs",
-                    json_data={"mode": mode},
-                )
-            except Exception as err:
-                raise HomeAssistantError(
-                    translation_domain=DOMAIN,
-                    translation_key="mode_selection_failed",
-                    translation_placeholders={"error": str(err), "mode": mode},
-                ) from err
+        except Exception as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="mode_selection_failed",
+                translation_placeholders={"error": str(err), "mode": mode},
+            ) from err
         self.entity_data.state = mode
         self.async_write_ha_state()
