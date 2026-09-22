@@ -133,9 +133,39 @@ async def test_runtime_proxy_failure_returns_unknown():
     [
         (
             "_async_check_netflix",
-            StreamingResponse(404, 0.1, "https://www.netflix.com/title/81280792"),
+            StreamingResponse(200, 0.1, "https://www.netflix.com/title/81280792", "Oh no!"),
             "limited",
             {"access_level": "originals_only"},
+        ),
+        (
+            "_async_check_netflix",
+            (
+                StreamingResponse(200, 0.1, "https://www.netflix.com/title/81280792", '"id":"JP","countryName":"Japan"'),
+                StreamingResponse(200, 0.2, "https://www.netflix.com/title/70143836", "Oh no!"),
+            ),
+            "available",
+            {"access_level": "full_catalog", "region": "JP", "latency": 0.2},
+        ),
+        (
+            "_async_check_netflix",
+            (
+                StreamingResponse(200, 0.1, "https://www.netflix.com/title/81280792", "title"),
+                StreamingResponse(0, 0.2, "https://www.netflix.com/title/70143836", error="timeout"),
+            ),
+            "unknown",
+            {"reason": "timeout"},
+        ),
+        (
+            "_async_check_netflix",
+            StreamingResponse(404, 0.1, "https://www.netflix.com/title/81280792"),
+            "unknown",
+            {},
+        ),
+        (
+            "_async_check_netflix",
+            StreamingResponse(403, 0.1, "https://www.netflix.com/title/81280792"),
+            "blocked",
+            {},
         ),
         (
             "_async_check_youtube_premium",
@@ -215,9 +245,19 @@ async def test_service_checkers_use_normalized_states(
         MagicMock(spec=aiohttp.ClientSession),
         parse_streaming_proxy("proxy.local:7890"),
     )
-    detector._async_request = AsyncMock(return_value=response)
+    detector._async_request = (
+        AsyncMock(side_effect=response)
+        if isinstance(response, tuple)
+        else AsyncMock(return_value=response)
+    )
 
     result = await getattr(detector, checker)()
+
+    if checker == "_async_check_netflix":
+        assert [call.args[1] for call in detector._async_request.await_args_list] == [
+            "https://www.netflix.com/title/81280792",
+            "https://www.netflix.com/title/70143836",
+        ]
 
     assert result["state"] == state
     assert set(result) >= {"state", "status_code", "latency", *attributes}

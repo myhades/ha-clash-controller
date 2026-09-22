@@ -263,16 +263,41 @@ class StreamingDetector:
         return result
 
     async def _async_check_netflix(self) -> dict[str, Any]:
-        response = await self._async_request(
-            "GET", SERVICE_TABLE["netflix"].url, headers=_BROWSER_HEADERS
+        responses = await asyncio.gather(
+            *(
+                self._async_request("GET", url, headers=_BROWSER_HEADERS)
+                for url in (
+                    SERVICE_TABLE["netflix"].url,
+                    "https://www.netflix.com/title/70143836",
+                )
+            )
         )
-        if response.status_code == 200:
-            return self._result(response, STATE_AVAILABLE, access_level="full_catalog")
-        if response.status_code == 404:
-            return self._result(response, STATE_LIMITED, access_level="originals_only")
-        if response.status_code == 403:
-            return self._result(response, STATE_BLOCKED)
-        return self._result(response, STATE_UNKNOWN)
+        for response in responses:
+            if response.error is not None:
+                return self._result(response, STATE_UNKNOWN)
+        for response in responses:
+            if response.status_code == 403:
+                return self._result(response, STATE_BLOCKED)
+            if response.status_code != 200 or not response.body.strip():
+                return self._result(response, STATE_UNKNOWN)
+
+        response = responses[0]
+        attributes: dict[str, Any] = {
+            "latency": max(item.latency for item in responses),
+        }
+        if all("Oh no!" in item.body for item in responses):
+            return self._result(
+                response, STATE_LIMITED, access_level="originals_only", **attributes
+            )
+        region_match = re.search(
+            r'"id"\s*:\s*"([A-Za-z]{2})"\s*,\s*"countryName"\s*:',
+            response.body,
+        )
+        if region_match:
+            attributes["region"] = region_match.group(1).upper()
+        return self._result(
+            response, STATE_AVAILABLE, access_level="full_catalog", **attributes
+        )
 
     async def _async_check_youtube_premium(self) -> dict[str, Any]:
         response = await self._async_request(
