@@ -1,0 +1,329 @@
+{
+    "title": "Clash Controller",
+    "config": {
+        "step": {
+            "user": {
+                "title": "Clash Controller einrichten",
+                "data": {
+                    "api_url": "API",
+                    "bearer_token": "Token",
+                    "use_ssl": "HTTPS verwenden",
+                    "allow_unsafe": "Unsichere SSL-Zertifikate zulassen"
+                },
+                "description": "API-Adresse und Token der Clash-Instanz eingeben, z. B. 192.168.1.1:9090 oder clash.mydomain.com. Bei einer IP-Adresse muss diese statisch sein."
+            },
+            "reauth_confirm": {
+                "title": "Clash-Token aktualisieren",
+                "description": "Der gespeicherte API-Token wird nicht mehr akzeptiert. Einen gültigen Token eingeben, um die Verbindung wiederherzustellen.",
+                "data": {
+                    "bearer_token": "Token"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "API nicht erreichbar. Adresse prüfen und erneut versuchen.",
+            "invalid_token": "API-Token ungültig. Token prüfen und erneut versuchen.",
+            "unknown": "Unerwarteter Fehler. Später erneut versuchen.",
+            "timed_out": "Zeitüberschreitung bei der API-Verbindung. Läuft Clash?"
+        },
+        "abort": {
+            "already_configured": "Diese Instanz ist bereits eingerichtet.",
+            "reauth_successful": "Zugangsdaten aktualisiert."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "description": "Für den Streaming-Check ist eine gültige HTTP-Proxy-Adresse erforderlich: `'<address>:<port>'` oder mit Zugangsdaten `'<username>:<password>@<address>:<port>'`.",
+                "title": "Clash Controller – Optionen",
+                "data": {
+                    "scan_interval": "Abfrageintervall (Sekunden)",
+                    "concurrent_connections": "Parallele Verbindungen",
+                    "streaming_detection": "Streaming-Verfügbarkeit prüfen",
+                    "streaming_proxy": "Proxy-Adresse"
+                }
+            }
+        },
+        "error": {
+            "invalid_proxy": "Eine gültige HTTP-Proxy-Adresse eingeben.",
+            "cannot_connect_proxy": "Verbindung über den Proxy fehlgeschlagen. Adresse prüfen und erneut versuchen.",
+            "invalid_proxy_auth": "Der Proxy hat die Zugangsdaten abgelehnt.",
+            "proxy_timed_out": "Zeitüberschreitung bei der Proxy-Verbindung.",
+            "unknown": "Unerwarteter Fehler. Später erneut versuchen."
+        }
+    },
+    "device": {
+        "clash_instance": {
+            "name": "Clash-Instanz"
+        },
+        "streaming_detection": {
+            "name": "Streaming-Verfügbarkeit"
+        }
+    },
+    "entity": {
+        "button": {
+            "flush_cache": {
+                "name": "FakeIP-Cache leeren"
+            },
+            "flush_dns_cache": {
+                "name": "DNS-Cache leeren"
+            },
+            "provider_healthcheck": {
+                "name": "{provider_name} prüfen"
+            },
+            "default_proxy_group_healthcheck": {
+                "name": "Standard-Proxygruppe prüfen"
+            }
+        },
+        "select": {
+            "core_mode": {
+                "name": "Proxy-Modus",
+                "state": {
+                    "rule": "Regelbasiert",
+                    "global": "Global",
+                    "direct": "Direkt",
+                    "script": "Skript"
+                }
+            }
+        },
+        "sensor": {
+            "up_speed": {
+                "name": "Uploadrate"
+            },
+            "down_speed": {
+                "name": "Downloadrate"
+            },
+            "up_traffic": {
+                "name": "Uploadvolumen"
+            },
+            "down_traffic": {
+                "name": "Downloadvolumen"
+            },
+            "memory_used": {
+                "name": "Speichernutzung"
+            },
+            "connection_number": {
+                "name": "Verbindungen"
+            },
+            "proxy_provider_count": {
+                "name": "Proxy-Provider"
+            },
+            "rule_provider_count": {
+                "name": "Regel-Provider"
+            },
+            "streaming_service": {
+                "name": "{service}",
+                "state": {
+                    "available": "Verfügbar",
+                    "limited": "Eingeschränkt",
+                    "blocked": "Blockiert",
+                    "unknown": "Unbekannt"
+                },
+                "state_attributes": {
+                    "latency": {
+                        "name": "Latenz"
+                    },
+                    "status_code": {
+                        "name": "Statuscode"
+                    },
+                    "region": {
+                        "name": "Region"
+                    },
+                    "access_level": {
+                        "name": "Zugriffsumfang"
+                    },
+                    "reason": {
+                        "name": "Grund"
+                    },
+                    "redirect_url": {
+                        "name": "Weiterleitungs-URL"
+                    }
+                }
+            }
+        }
+    },
+    "exceptions": {
+        "invalid_device": {
+            "message": "Die gewählte Clash-Instanz ist ungültig oder nicht geladen."
+        },
+        "unsupported_action": {
+            "message": "Der gewählte Core unterstützt {action} nicht."
+        },
+        "invalid_latency_target": {
+            "message": "Entweder eine Gruppe oder einen Knoten angeben, nicht beides."
+        },
+        "invalid_json": {
+            "message": "Das Feld {field} muss ein JSON-Objekt enthalten."
+        },
+        "reboot_failed": {
+            "message": "Core-Neustart fehlgeschlagen: {error}"
+        },
+        "connections_failed": {
+            "message": "Verbindungen konnten nicht abgerufen werden: {error}"
+        },
+        "close_connections_failed": {
+            "message": "Verbindungen konnten nicht geschlossen werden: {error}"
+        },
+        "latency_failed": {
+            "message": "Latenzmessung fehlgeschlagen: {error}"
+        },
+        "dns_query_failed": {
+            "message": "DNS-Abfrage fehlgeschlagen: {error}"
+        },
+        "rules_failed": {
+            "message": "Regeln konnten nicht abgerufen werden: {error}"
+        },
+        "api_call_failed": {
+            "message": "API-Aufruf fehlgeschlagen: {error}"
+        },
+        "proxy_group_selection_failed": {
+            "message": "Proxygruppe {group} konnte nicht auf {node} umgestellt werden: {error}"
+        },
+        "empty_mode": {
+            "message": "Der Proxy-Modus darf nicht leer sein."
+        },
+        "mode_selection_failed": {
+            "message": "Proxy-Modus konnte nicht auf {mode} umgestellt werden: {error}"
+        },
+        "button_action_missing": {
+            "message": "Für diese Schaltfläche ist keine Aktion definiert."
+        },
+        "button_action_failed": {
+            "message": "{action} fehlgeschlagen: {error}"
+        }
+    },
+    "services": {
+        "reboot_core_service": {
+            "name": "Clash-Core neu starten",
+            "description": "Den Core der entfernten Clash-Instanz neu starten.",
+            "fields": {
+                "device_id": {
+                    "name": "Instanz",
+                    "description": "Zielinstanz auswählen"
+                }
+            }
+        },
+        "filter_connection_service": {
+            "name": "Verbindungen filtern",
+            "description": "Aktive Verbindungen nach Stichwörtern filtern und optional schließen. Mehrere Stichwörter durch Kommas trennen. Groß-/Kleinschreibung wird ignoriert.",
+            "fields": {
+                "device_id": {
+                    "name": "Instanz",
+                    "description": "Zielinstanz auswählen"
+                },
+                "close_connection": {
+                    "name": "Verbindungen schließen",
+                    "description": "Gefundene Verbindungen auch schließen"
+                },
+                "host": {
+                    "name": "Host",
+                    "description": "Nach Host filtern"
+                },
+                "src_hostname": {
+                    "name": "Quell-IP",
+                    "description": "Nach Quell-IP filtern"
+                },
+                "des_hostname": {
+                    "name": "Ziel-IP",
+                    "description": "Nach Ziel-IP filtern"
+                }
+            }
+        },
+        "get_latency_service": {
+            "name": "Latenz messen",
+            "description": "Die Latenz einer Gruppe oder eines Knotens messen. Nur eines der beiden Felder ausfüllen. Eine falsche URL oder Zeitüberschreitung kann Fehler 504 auslösen.",
+            "fields": {
+                "device_id": {
+                    "name": "Instanz",
+                    "description": "Zielinstanz auswählen"
+                },
+                "group": {
+                    "name": "Gruppe",
+                    "description": "Name der Proxygruppe. Die Messung hebt eine feste Auswahl in der Gruppe auf"
+                },
+                "node": {
+                    "name": "Knoten",
+                    "description": "Name des Proxyknotens"
+                },
+                "url": {
+                    "name": "URL",
+                    "description": "Ziel-URL für die Latenzmessung"
+                },
+                "timeout": {
+                    "name": "Zeitlimit",
+                    "description": "Zeitlimit der Verbindung in Millisekunden"
+                }
+            }
+        },
+        "dns_query_service": {
+            "name": "DNS abfragen",
+            "description": "Eine DNS-Abfrage über Clash ausführen.",
+            "fields": {
+                "device_id": {
+                    "name": "Instanz",
+                    "description": "Zielinstanz auswählen"
+                },
+                "domain_name": {
+                    "name": "Domain",
+                    "description": "Abzufragende Domain"
+                },
+                "record_type": {
+                    "name": "Eintragstyp",
+                    "description": "DNS-Eintragstyp. Leer lassen für IPv4 (A)"
+                }
+            }
+        },
+        "get_rule_service": {
+            "name": "Regeln abrufen",
+            "description": "Regeln nach Stichwörtern filtern und abrufen.",
+            "fields": {
+                "device_id": {
+                    "name": "Instanz",
+                    "description": "Zielinstanz auswählen"
+                },
+                "rule_type": {
+                    "name": "Typ",
+                    "description": "Typ der Regel"
+                },
+                "rule_payload": {
+                    "name": "Regelinhalt",
+                    "description": "Zu suchender Regelinhalt"
+                },
+                "rule_proxy": {
+                    "name": "Proxy",
+                    "description": "Verwendetes Proxy-Ziel"
+                }
+            }
+        },
+        "api_call_service": {
+            "name": "API aufrufen",
+            "description": "Einen API-Aufruf an Clash senden und optional die Antwort abrufen.",
+            "fields": {
+                "device_id": {
+                    "name": "Instanz",
+                    "description": "Zielinstanz auswählen"
+                },
+                "api_endpoint": {
+                    "name": "Endpunkt",
+                    "description": "API-Endpunkt für den Aufruf"
+                },
+                "api_method": {
+                    "name": "Methode",
+                    "description": "HTTP-Methode (GET, POST usw.)"
+                },
+                "api_params": {
+                    "name": "Parameter",
+                    "description": "Abfrageparameter als gültiges JSON-Objekt"
+                },
+                "api_data": {
+                    "name": "Daten",
+                    "description": "Anfragedaten als gültiges JSON-Objekt"
+                },
+                "read_line": {
+                    "name": "Zeile lesen",
+                    "description": "Nummer der zu lesenden Zeile bei einer gestreamten Antwort"
+                }
+            }
+        }
+    }
+}
