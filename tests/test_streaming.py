@@ -114,18 +114,30 @@ async def test_proxy_validation_rejects_authentication_failure():
         await detector.async_validate_proxy()
 
 
-async def test_runtime_proxy_failure_returns_unknown():
+@pytest.mark.parametrize("proxy_auth_failed", [False, True])
+async def test_runtime_proxy_failure_returns_unknown(proxy_auth_failed):
     session = MagicMock(spec=aiohttp.ClientSession)
-    session.request.side_effect = aiohttp.ClientConnectionError()
+    session.request.side_effect = (
+        aiohttp.ClientHttpProxyError(
+            request_info=SimpleNamespace(real_url="https://streaming.example/title"),
+            history=(),
+            status=407,
+            message="Proxy Authentication Required",
+        )
+        if proxy_auth_failed
+        else aiohttp.ClientConnectionError()
+    )
     detector = StreamingDetector(session, parse_streaming_proxy("proxy.local:7890"))
 
     result = await detector._async_request(
         "GET", "https://streaming.example/title"
     )
 
-    assert result.status_code == 0
+    assert result.status_code == (407 if proxy_auth_failed else 0)
     assert result.latency >= 0
-    assert result.error == "connection_error"
+    assert result.error == (
+        "proxy_authentication" if proxy_auth_failed else "connection_error"
+    )
 
 
 @pytest.mark.parametrize(

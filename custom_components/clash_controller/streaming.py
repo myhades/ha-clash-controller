@@ -238,11 +238,12 @@ class StreamingDetector:
             )
         except aiohttp.ClientError as err:
             _LOGGER.debug("Error checking streaming URL %s: %s", url, err)
+            proxy_auth_failed = getattr(err, "status", None) == 407
             return StreamingResponse(
-                status_code=0,
+                status_code=407 if proxy_auth_failed else 0,
                 latency=time.monotonic() - start_time,
                 url=url,
-                error="connection_error",
+                error="proxy_authentication" if proxy_auth_failed else "connection_error",
             )
 
     @staticmethod
