@@ -32,6 +32,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
+from .entity_identity import EntityIdentityStore
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_HEALTHCHECK_TIMEOUT_MS = 5000
@@ -71,6 +72,7 @@ class ClashEntityData:
     unique_key: str | None = None
     unique_id: str = ""
     device_info: DeviceInfo | None = None
+    identity_name: str | None = None
 
 
 class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
@@ -110,9 +112,11 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         self._data_by_name: dict[str, ClashEntityData] = {}
         self._data_by_unique_id: dict[str, ClashEntityData] = {}
         self._failed_endpoints: set[str] = set()
+        self.entity_identities = EntityIdentityStore(hass, config_entry.entry_id)
 
     async def _async_setup(self) -> None:
         """Load data that remains stable for this coordinator instance."""
+        await self.entity_identities.async_load()
         try:
             await self.api.async_validate_connection()
         except APIAuthError as err:
@@ -176,6 +180,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         ]
         if not real_entities:
             raise UpdateFailed("Empty response")
+        await self.entity_identities.async_save()
 
         failed_endpoints = set(result.errors)
         for endpoint in sorted(failed_endpoints - self._failed_endpoints):
@@ -239,6 +244,8 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
             entity_data.append(self._build_dns_flush_button())
 
         for item in entity_data:
+            if item.entity_type in {"proxy_group_selector", "proxy_group_sensor"}:
+                item.identity_name = item.name
             id_source = (
                 item.unique_key or item.name or item.translation_key or item.entity_type
             )
@@ -248,6 +255,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                 f"_{id_source.lower().replace(' ', '_')}"
             )
 
+        self.entity_identities.assign(entity_data)
         self._data_by_name = {}
         for item in entity_data:
             if item.name and item.name not in self._data_by_name:
@@ -529,6 +537,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                         enabled_default=False,
                         action=action,
                         unique_key=f"provider_healthcheck_{slug}",
+                        identity_name=provider_name,
                     )
                 )
 

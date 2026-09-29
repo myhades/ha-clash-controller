@@ -931,6 +931,95 @@ async def test_exact_proxy_names(hass, target):
     )
 
 
+@pytest.mark.parametrize("provider", [False, True])
+async def test_entity_collision_identity_survives_reload(hass, backend, provider):
+    api = backend[0](HOST, "audit")
+    names = ("US-1", "US_1") if provider else ("AI EU", "AI_EU")
+    kind = "provider_healthcheck_button" if provider else "proxy_group_selector"
+
+    def set_names(values):
+        if provider:
+            api.capabilities.update(providers_proxies=True, provider_healthcheck=True)
+            api.payload["providers_proxies"] = {"providers": {name: {} for name in values}}
+        else:
+            api.payload["proxies"] = {"proxies": {
+                name: {"name": name, "type": "Selector", "now": "DIRECT", "all": ["DIRECT"]}
+                for name in values
+            }}
+
+    def identities(coordinator):
+        return {item.identity_name: item.unique_id for item in coordinator.data
+                if item.entity_type == kind}
+
+    set_names(names[:1])
+    entry = await load_entry(hass, backend)
+    coordinator = entry.runtime_data.coordinator
+    original = identities(coordinator)[names[0]]
+    set_names(reversed(names))
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assigned = identities(coordinator)
+    assert len(set(assigned.values())) == 2
+    assert assigned[names[0]] == original
+    set_names(names[1:])
+    await coordinator.async_refresh()
+    assert identities(coordinator) == {names[1]: assigned[names[1]]}
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = entry.runtime_data.coordinator
+    assert identities(coordinator) == {names[1]: assigned[names[1]]}
+    set_names(reversed(names))
+    await coordinator.async_refresh()
+    assert identities(coordinator) == assigned
+    if provider:
+        for item in coordinator.data:
+            if item.entity_type == kind:
+                assert item.action["args"][1] == f"providers/proxies/{item.identity_name}/healthcheck"
+
+
+@pytest.mark.parametrize("kind,original_name", [
+    ("proxy_group_selector", "AI_EU"),
+    ("provider_healthcheck_button", "AI_EU Healthcheck"),
+    ("provider_healthcheck_button", "AI_EU 测速"),
+    ("provider_healthcheck_button", "AI_EU prüfen"),
+    ("proxy_group_selector", None),
+])
+async def test_legacy_collision_identity_migration(hass, kind, original_name):
+    from custom_components.clash_controller import async_remove_entry
+    from custom_components.clash_controller.coordinator import ClashEntityData
+    from custom_components.clash_controller.entity_identity import EntityIdentityStore
+
+    entry = MockConfigEntry(domain=DOMAIN, data=INPUT)
+    entry.add_to_hass(hass)
+    legacy_id = f"controller_{kind}_ai_eu"
+    er.async_get(hass).async_get_or_create(
+        "button" if kind == "provider_healthcheck_button" else "select",
+        DOMAIN, legacy_id, config_entry=entry, original_name=original_name,
+    )
+    store = EntityIdentityStore(hass, entry.entry_id)
+    await store.async_load()
+    items = [ClashEntityData(name=name, entity_type=kind,
+                            identity_name=name, unique_id=legacy_id)
+             for name in ("AI EU", "AI_EU")]
+    store.assign(items)
+    assigned = {item.identity_name: item.unique_id for item in items}
+    assert len(set(assigned.values())) == 2
+    if original_name is not None:
+        assert assigned["AI_EU"] == legacy_id
+    else:
+        assert legacy_id not in assigned.values()
+    await store.async_save()
+    restored = EntityIdentityStore(hass, entry.entry_id)
+    await restored.async_load()
+    for item in items:
+        item.unique_id = legacy_id
+    restored.assign(list(reversed(items)))
+    assert {item.identity_name: item.unique_id for item in items} == assigned
+    with patch("homeassistant.helpers.storage.Store.async_remove", new_callable=AsyncMock) as remove:
+        await async_remove_entry(hass, entry)
+        remove.assert_awaited_once()
+
+
 @pytest.mark.parametrize(
     "api_error",
     [APIConnectionError, APIAuthError, APITimeoutError, APIClientError],
