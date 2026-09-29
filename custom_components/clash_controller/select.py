@@ -73,8 +73,8 @@ class GroupSelect(SelectEntityBase):
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        group = self._attr_name.strip()
-        node = option.strip()
+        group = self._attr_name
+        node = option
         try:
             await self.coordinator.api.async_request(
                 "PUT",

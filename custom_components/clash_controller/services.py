@@ -313,8 +313,8 @@ class ClashServicesSetup:
                 "latency": sorted_items
             }
         
-        group = service_call.data.get(GROUP_NAME, "").strip()
-        node = service_call.data.get(NODE_NAME, "").strip()
+        group = service_call.data.get(GROUP_NAME, "")
+        node = service_call.data.get(NODE_NAME, "")
         if bool(group) ^ bool(node) is False:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,

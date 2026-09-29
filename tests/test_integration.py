@@ -899,6 +899,38 @@ async def test_select_and_button_writes(hass, backend):
     api.async_request.assert_awaited_once_with("POST", "cache/fakeip/flush")
 
 
+@pytest.mark.parametrize("target", ["group", "node"])
+async def test_exact_proxy_names(hass, target):
+    from homeassistant.core import ServiceCall
+    from custom_components.clash_controller.select import GroupSelect
+    from custom_components.clash_controller.services import ClashServicesSetup
+
+    api = SimpleNamespace(
+        async_request=AsyncMock(return_value={"delay": 12}),
+        capabilities={"group_delay": True, "proxy_delay": True},
+    )
+    coordinator = SimpleNamespace(api=api)
+    selector = object.__new__(GroupSelect)
+    selector.coordinator = coordinator
+    selector._attr_name = " Group "
+    selector.entity_data = SimpleNamespace(state=None)
+    selector.async_write_ha_state = lambda: None
+    await selector.async_select_option(" Node ")
+    api.async_request.assert_awaited_once_with(
+        "PUT", "proxies/%20Group%20", json_data={"name": " Node "}
+    )
+    api.async_request.reset_mock()
+    service = object.__new__(ClashServicesSetup)
+    service._get_coordinator = lambda _: coordinator
+    await service.async_get_latency_service(ServiceCall(
+        hass, DOMAIN, "get_latency_service",
+        {"device_id": "controller", target: " Name "},
+    ))
+    assert api.async_request.call_args.kwargs["endpoint"] == (
+        "group/%20Name%20/delay" if target == "group" else "proxies/%20Name%20/delay"
+    )
+
+
 @pytest.mark.parametrize(
     "api_error",
     [APIConnectionError, APIAuthError, APITimeoutError, APIClientError],
