@@ -31,7 +31,7 @@ Core support:
 
 ## Installation
 
-Home Assistant Core must be `2026.8.0` or newer.
+Home Assistant Core must be `2026.10.0` or newer.
 
 Choose your preferred installation method, and reboot Home Assistant afterward.
 
