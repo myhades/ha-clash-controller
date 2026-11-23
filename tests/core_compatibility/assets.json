@@ -42,50 +42,50 @@
     }
   },
   "mihomo": {
-    "version": "v1.19.28",
+    "version": "v1.19.34",
     "source": "MetaCubeX/mihomo official release",
     "platforms": {
       "darwin-arm64": {
-        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-darwin-arm64-v1.19.28.gz",
-        "sha256": "40cdae2fab4b18df15f40eaa9dc3af70ab3d8be7f77164ae1e5f1af3a2a4fb44"
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.34/mihomo-darwin-arm64-v1.19.34.gz",
+        "sha256": "1a7a20eca63fbbaec90137717465bfde488d0db2a3a79b8fadebf9b2545b6e4c"
       },
       "linux-amd64": {
-        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-linux-amd64-compatible-v1.19.28.gz",
-        "sha256": "70d01cfb8cb7bf7a92fd1af16cb4b9553d90bb4eecde3b5c4849103e27c80ddb"
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.34/mihomo-linux-amd64-compatible-v1.19.34.gz",
+        "sha256": "2763f5b414527f7baf6dc57e3f82f3ab561eedf34bfd7c2f2cde1f7e592efe06"
       }
     }
   },
   "clash_rs": {
-    "version": "v0.10.8",
+    "version": "v0.10.12",
     "source": "ibigbug/clash-rs official release",
     "platforms": {
       "darwin-arm64": {
-        "url": "https://github.com/ibigbug/clash-rs/releases/download/v0.10.8/clash-rs-aarch64-apple-darwin",
-        "sha256": "b417c171252fe1edfcc2b0d20436d4c0ad4b12e7aa65c6aaa103f5a041e7b020",
+        "url": "https://github.com/ibigbug/clash-rs/releases/download/v0.10.12/clash-rs-aarch64-apple-darwin",
+        "sha256": "f14e486b050d6bba31cfab91f6b34e15b129620db24b62f176b8a7543dc73fca",
         "format": "raw"
       },
       "linux-amd64": {
-        "url": "https://github.com/ibigbug/clash-rs/releases/download/v0.10.8/clash-rs-x86_64-unknown-linux-gnu",
-        "sha256": "d8a3be45594d7a50ec899119751d3d27a65ca30177eddf3e172ccc23e6e096da",
+        "url": "https://github.com/ibigbug/clash-rs/releases/download/v0.10.12/clash-rs-x86_64-unknown-linux-gnu",
+        "sha256": "1df38d5ba091b09054e8676fde5d6d155252fd15a37f67a0cf13cea36b1b8a21",
         "format": "raw"
       }
     }
   },
   "sing_box": {
-    "version": "v1.14.0",
+    "version": "v1.14.4",
     "source": "SagerNet/sing-box official release",
     "platforms": {
       "darwin-arm64": {
-        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box-1.14.0-darwin-arm64.tar.gz",
-        "sha256": "a150c94012ff768b7261939cd236b9c8554127f45137230295d23a5660225cc9",
+        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-darwin-arm64.tar.gz",
+        "sha256": "0d8c7f5ed5d587b0f1a5e9772a708ec3bfa4ac4c9329604b01d8d9c2ba406838",
         "format": "tar.gz",
-        "member": "sing-box-1.14.0-darwin-arm64/sing-box"
+        "member": "sing-box-1.14.4-darwin-arm64/sing-box"
       },
       "linux-amd64": {
-        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.0/sing-box-1.14.0-linux-amd64.tar.gz",
-        "sha256": "2375de6999f4f56ab46b4fc5ddf26a6aba1d3e61a0f4e7ddec2f4690457d5f63",
+        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-linux-amd64.tar.gz",
+        "sha256": "699a1b510aa4396b2176d32d1181920399ebf1e267835da6f3b598d0f7c24968",
         "format": "tar.gz",
-        "member": "sing-box-1.14.0-linux-amd64/sing-box"
+        "member": "sing-box-1.14.4-linux-amd64/sing-box"
       }
     }
   }

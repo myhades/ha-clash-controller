@@ -25,9 +25,9 @@ Core support:
 | Clash           | Partially | v1.18.0        | End of life |
 | Clash Premium   | Partially | 2023.08.17     | End of life |
 | Clash Meta      | Partially | v1.16.0        | End of life |
-| Mihomo          | Yes       | v1.19.28       | Maintained  |
-| clash-rs        | Yes       | v0.10.8        | Maintained  |
-| sing-box        | Partially | v1.14.0        | Maintained  |
+| Mihomo          | Yes       | v1.19.34       | Maintained  |
+| clash-rs        | Yes       | v0.10.12       | Maintained  |
+| sing-box        | Partially | v1.14.4        | Maintained  |
 
 ## Installation
 
