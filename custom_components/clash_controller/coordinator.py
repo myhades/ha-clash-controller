@@ -379,6 +379,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
         ]
 
         for item in proxies.get("proxies", {}).values():
+            enabled_default = False if item.get("hidden") is True else None
             if item.get("type") in ["Selector", "Fallback"]:
                 entity_data.append(
                     ClashEntityData(
@@ -387,6 +388,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                         entity_type="proxy_group_selector",
                         icon="mdi:network-outline",
                         options=item.get("all"),
+                        enabled_default=enabled_default,
                         attributes={
                             k: item[k] for k in group_selector_items if k in item
                         },
@@ -409,6 +411,7 @@ class ClashControllerCoordinator(DataUpdateCoordinator[list[ClashEntityData]]):
                         ),
                         icon="mdi:network-outline",
                         options=item.get("all") if supports_fixed else None,
+                        enabled_default=enabled_default,
                         attributes=attributes,
                     )
                 )
