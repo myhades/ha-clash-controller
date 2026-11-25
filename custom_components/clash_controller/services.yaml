@@ -8,6 +8,16 @@ reboot_core_service:
             integration: clash_controller
             model_id: clash_controller
 
+reload_config_service:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          filter:
+            integration: clash_controller
+            model_id: clash_controller
+
 filter_connection_service:
   fields:
     device_id:
