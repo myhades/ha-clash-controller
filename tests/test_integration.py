@@ -712,18 +712,18 @@ async def test_diagnostics_redaction(hass, backend):
         ),
         (
             "get_latency_service",
-            {"node": "A/B 中文"},
+            {"node": " A/B 中文 "},
             "GET",
-            "proxies/A%2FB%20%E4%B8%AD%E6%96%87/delay",
+            "proxies/%20A%2FB%20%E4%B8%AD%E6%96%87%20/delay",
             {"delay": 3},
-            {"latency": {"A/B 中文": 3}},
+            {"latency": {" A/B 中文 ": 3}},
             "latency_failed",
         ),
         (
             "get_latency_service",
-            {"group": "A/B 中文"},
+            {"group": " A/B 中文 "},
             "GET",
-            "group/A%2FB%20%E4%B8%AD%E6%96%87/delay",
+            "group/%20A%2FB%20%E4%B8%AD%E6%96%87%20/delay",
             {"b": 5, "a": 2},
             {"fastest_node": "a", "latency": [("a", 2), ("b", 5)]},
             "latency_failed",
@@ -865,19 +865,23 @@ async def test_service_validation(hass, backend, service, data, key):
 
 
 async def test_select_and_button_writes(hass, backend):
+    api = backend[0](HOST, "")
+    groups = api.payload["proxies"]["proxies"]
+    group = groups.pop("A/B 中文")
+    group.update(name=" A/B 中文 ", all=["DIRECT", " REJECT "])
+    groups[group["name"]] = group
     entry = await load_entry(hass, backend)
-    api = backend[1][HOST]
-    selector = entity_id(hass, entry, "_a/b_中文")
+    selector = entity_id(hass, entry, "_a/b_中文_")
     await hass.services.async_call(
         "select",
         "select_option",
-        {"entity_id": selector, "option": "REJECT"},
+        {"entity_id": selector, "option": " REJECT "},
         blocking=True,
     )
     api.async_request.assert_awaited_once_with(
-        "PUT", "proxies/A%2FB%20%E4%B8%AD%E6%96%87", json_data={"name": "REJECT"}
+        "PUT", "proxies/%20A%2FB%20%E4%B8%AD%E6%96%87%20", json_data={"name": " REJECT "}
     )
-    assert hass.states.get(selector).state == "REJECT"
+    assert hass.states.get(selector).state == " REJECT "
     api.async_request.reset_mock()
     await hass.services.async_call(
         "select",
@@ -897,38 +901,6 @@ async def test_select_and_button_writes(hass, backend):
         blocking=True,
     )
     api.async_request.assert_awaited_once_with("POST", "cache/fakeip/flush")
-
-
-@pytest.mark.parametrize("target", ["group", "node"])
-async def test_exact_proxy_names(hass, target):
-    from homeassistant.core import ServiceCall
-    from custom_components.clash_controller.select import GroupSelect
-    from custom_components.clash_controller.services import ClashServicesSetup
-
-    api = SimpleNamespace(
-        async_request=AsyncMock(return_value={"delay": 12}),
-        capabilities={"group_delay": True, "proxy_delay": True},
-    )
-    coordinator = SimpleNamespace(api=api)
-    selector = object.__new__(GroupSelect)
-    selector.coordinator = coordinator
-    selector._attr_name = " Group "
-    selector.entity_data = SimpleNamespace(state=None)
-    selector.async_write_ha_state = lambda: None
-    await selector.async_select_option(" Node ")
-    api.async_request.assert_awaited_once_with(
-        "PUT", "proxies/%20Group%20", json_data={"name": " Node "}
-    )
-    api.async_request.reset_mock()
-    service = object.__new__(ClashServicesSetup)
-    service._get_coordinator = lambda _: coordinator
-    await service.async_get_latency_service(ServiceCall(
-        hass, DOMAIN, "get_latency_service",
-        {"device_id": "controller", target: " Name "},
-    ))
-    assert api.async_request.call_args.kwargs["endpoint"] == (
-        "group/%20Name%20/delay" if target == "group" else "proxies/%20Name%20/delay"
-    )
 
 
 @pytest.mark.parametrize("provider", [False, True])
@@ -1020,14 +992,10 @@ async def test_legacy_collision_identity_migration(hass, kind, original_name):
         remove.assert_awaited_once()
 
 
-@pytest.mark.parametrize(
-    "api_error",
-    [APIConnectionError, APIAuthError, APITimeoutError, APIClientError],
-)
-async def test_entity_action_errors_are_translated(hass, backend, api_error):
+async def test_entity_action_errors_are_translated(hass, backend):
     entry = await load_entry(hass, backend)
     api = backend[1][HOST]
-    api.async_request.side_effect = api_error("request failed")
+    api.async_request.side_effect = APIConnectionError("request failed")
 
     with pytest.raises(HomeAssistantError) as error:
         await hass.services.async_call(

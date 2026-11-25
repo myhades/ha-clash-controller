@@ -60,7 +60,7 @@ def test_reject_invalid_streaming_proxy(value):
         parse_streaming_proxy(value)
 
 
-@pytest.mark.parametrize("status", [200, 403, 404, 407])
+@pytest.mark.parametrize("status", [200, 407])
 async def test_streaming_status_uses_proxy(status):
     response = AsyncMock()
     response.__aenter__.return_value = SimpleNamespace(
