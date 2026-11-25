@@ -1,7 +1,7 @@
 # Home Assistant Clash Controller
 
 [![](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![](https://img.shields.io/badge/HACS-Default-yellow.svg)](https://hacs.xyz/)
+[![](https://img.shields.io/badge/Marketplace-Default-yellow.svg)](https://www.home-assistant.io/integrations/marketplace/)
 [![](https://img.shields.io/badge/maintainer-%40myhades-green)](https://github.com/myhades)
 [![](https://img.shields.io/github/v/release/myhades/ha-clash-controller)](https://github.com/myhades/ha-clash-controller/releases)
 
@@ -35,11 +35,11 @@ Home Assistant Core must be `2026.10.0` or newer.
 
 Choose your preferred installation method, and reboot Home Assistant afterward.
 
-### Method 1: Through HACS
+### Method 1: Through Marketplace
 
-Navigate to "HACS" > "Clash Controller" or use the My button below.
+Navigate to "Settings" > "Marketplace" > "Clash Controller" or use the My button below.
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=myhades&repository=ha-clash-controller&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=myhades&repository=ha-clash-controller&category=integration)
 
 ### Method 2: Manually
 
@@ -78,6 +78,7 @@ Core capability is automatically detected at entry load, and unsupported entitie
 | Action                      | Description                                        |
 |-----------------------------|----------------------------------------------------|
 | `reboot_core_service`       | Reboot the selected Clash core.                    |
+| `reload_config_service`     | Reload the selected Clash core's current configuration file. |
 | `filter_connection_service` | Find active connections and optionally close them. |
 | `get_latency_service`       | Test the latency of a proxy group or node.         |
 | `dns_query_service`         | Query a DNS record through the selected core.      |
