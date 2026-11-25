@@ -158,6 +158,9 @@
         "reboot_failed": {
             "message": "重启内核时出错：{error}"
         },
+        "reload_config_failed": {
+            "message": "重新加载内核配置时出错：{error}"
+        },
         "connections_failed": {
             "message": "获取连接时出错：{error}"
         },
@@ -196,6 +199,16 @@
         "reboot_core_service": {
             "name": "重启 Clash 核心",
             "description": "重启远程 Clash 实例的核心。",
+            "fields": {
+                "device_id": {
+                    "name": "实例",
+                    "description": "选择目标实例"
+                }
+            }
+        },
+        "reload_config_service": {
+            "name": "重载内核配置",
+            "description": "重新加载所选 Clash 内核的当前配置文件。",
             "fields": {
                 "device_id": {
                     "name": "实例",

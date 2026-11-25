@@ -25,6 +25,7 @@ from .const import (
     GET_LATENCY_SERVICE_NAME,
     GET_RULE_SERVICE_NAME,
     REBOOT_CORE_SERVICE_NAME,
+    RELOAD_CONFIG_SERVICE_NAME,
 )
 from .coordinator import ClashControllerCoordinator
 
@@ -51,7 +52,7 @@ API_PARAMS = "api_params"
 API_DATA = "api_data"
 API_READ_LINE = "read_line"
 
-REBOOT_CORE_SERVICE_SCHEMA = vol.Schema(
+DEVICE_ONLY_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_DEVICE_ID): cv.string,
     }
@@ -136,7 +137,12 @@ class ClashServicesSetup:
         _register(
             REBOOT_CORE_SERVICE_NAME,
             self.async_reboot_core_service,
-            REBOOT_CORE_SERVICE_SCHEMA,
+            DEVICE_ONLY_SCHEMA,
+        )
+        _register(
+            RELOAD_CONFIG_SERVICE_NAME,
+            self.async_reload_config_service,
+            DEVICE_ONLY_SCHEMA,
         )
         _register(
             FILTER_CONNECTION_SERVICE_NAME,
@@ -223,6 +229,14 @@ class ClashServicesSetup:
             await coordinator.api.async_request("POST", "restart")
         except Exception as err:
             raise self._action_error("reboot_failed", err) from err
+
+    async def async_reload_config_service(self, service_call: ServiceCall) -> None:
+        """Reload the selected core's current configuration file."""
+        coordinator = self._get_coordinator(service_call.data[CONF_DEVICE_ID])
+        try:
+            await coordinator.api.async_request("PUT", "configs", json_data={})
+        except Exception as err:
+            raise self._action_error("reload_config_failed", err) from err
 
     async def async_filter_connection_service(
         self, service_call: ServiceCall
@@ -313,8 +327,8 @@ class ClashServicesSetup:
                 "latency": sorted_items
             }
         
-        group = service_call.data.get(GROUP_NAME, "").strip()
-        node = service_call.data.get(NODE_NAME, "").strip()
+        group = service_call.data.get(GROUP_NAME, "")
+        node = service_call.data.get(NODE_NAME, "")
         if bool(group) ^ bool(node) is False:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,

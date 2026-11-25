@@ -158,6 +158,9 @@
         "reboot_failed": {
             "message": "Core-Neustart fehlgeschlagen: {error}"
         },
+        "reload_config_failed": {
+            "message": "Neuladen der Konfiguration fehlgeschlagen: {error}"
+        },
         "connections_failed": {
             "message": "Verbindungen konnten nicht abgerufen werden: {error}"
         },
@@ -196,6 +199,16 @@
         "reboot_core_service": {
             "name": "Clash-Core neu starten",
             "description": "Den Core der entfernten Clash-Instanz neu starten.",
+            "fields": {
+                "device_id": {
+                    "name": "Instanz",
+                    "description": "Zielinstanz auswählen"
+                }
+            }
+        },
+        "reload_config_service": {
+            "name": "Konfiguration neu laden",
+            "description": "Die aktuelle Konfigurationsdatei des Clash-Cores neu laden.",
             "fields": {
                 "device_id": {
                     "name": "Instanz",

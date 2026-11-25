@@ -16,6 +16,7 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import ClashControllerCoordinator
+from .entity_identity import EntityIdentityStore
 from .services import ClashServicesSetup
 from .streaming_coordinator import StreamingCoordinator
 
@@ -100,3 +101,10 @@ async def async_unload_entry(
         config_entry, PLATFORMS
     )
     return unload_ok
+
+
+async def async_remove_entry(
+    hass: HomeAssistant, config_entry: ClashControllerConfigEntry
+) -> None:
+    """Remove identity reservations only when the config entry is deleted."""
+    await EntityIdentityStore(hass, config_entry.entry_id).store.async_remove()

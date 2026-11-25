@@ -1,7 +1,7 @@
 # Home Assistant Clash Controller
 
 [![](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![](https://img.shields.io/badge/HACS-Default-yellow.svg)](https://hacs.xyz/)
+[![](https://img.shields.io/badge/Marketplace-Default-yellow.svg)](https://www.home-assistant.io/integrations/marketplace/)
 [![](https://img.shields.io/badge/maintainer-%40myhades-green)](https://github.com/myhades)
 [![](https://img.shields.io/github/v/release/myhades/ha-clash-controller)](https://github.com/myhades/ha-clash-controller/releases)
 
@@ -25,21 +25,21 @@ Core support:
 | Clash           | Partially | v1.18.0        | End of life |
 | Clash Premium   | Partially | 2023.08.17     | End of life |
 | Clash Meta      | Partially | v1.16.0        | End of life |
-| Mihomo          | Yes       | v1.19.28       | Maintained  |
-| clash-rs        | Yes       | v0.10.8        | Maintained  |
-| sing-box        | Partially | v1.14.0        | Maintained  |
+| Mihomo          | Yes       | v1.19.34       | Maintained  |
+| clash-rs        | Yes       | v0.10.12       | Maintained  |
+| sing-box        | Partially | v1.14.4        | Maintained  |
 
 ## Installation
 
-Home Assistant Core must be `2026.8.0` or newer.
+Home Assistant Core must be `2026.10.0` or newer.
 
 Choose your preferred installation method, and reboot Home Assistant afterward.
 
-### Method 1: Through HACS
+### Method 1: Through Marketplace
 
-Navigate to "HACS" > "Clash Controller" or use the My button below.
+Navigate to "Settings" > "Marketplace" > "Clash Controller" or use the My button below.
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=myhades&repository=ha-clash-controller&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=myhades&repository=ha-clash-controller&category=integration)
 
 ### Method 2: Manually
 
@@ -78,6 +78,7 @@ Core capability is automatically detected at entry load, and unsupported entitie
 | Action                      | Description                                        |
 |-----------------------------|----------------------------------------------------|
 | `reboot_core_service`       | Reboot the selected Clash core.                    |
+| `reload_config_service`     | Reload the selected Clash core's current configuration file. |
 | `filter_connection_service` | Find active connections and optionally close them. |
 | `get_latency_service`       | Test the latency of a proxy group or node.         |
 | `dns_query_service`         | Query a DNS record through the selected core.      |

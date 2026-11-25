@@ -158,6 +158,9 @@
         "reboot_failed": {
             "message": "Error rebooting the core: {error}"
         },
+        "reload_config_failed": {
+            "message": "Error reloading the core configuration: {error}"
+        },
         "connections_failed": {
             "message": "Error getting connections: {error}"
         },
@@ -202,6 +205,16 @@
               "description": "Select the target instance"
             }
           }
+        },
+        "reload_config_service": {
+            "name": "Reload Core Configuration",
+            "description": "Reload the current configuration file of the selected Clash core.",
+            "fields": {
+                "device_id": {
+                    "name": "Instance",
+                    "description": "Select the target instance"
+                }
+            }
         },
         "filter_connection_service": {
             "name": "Filter Connection",
